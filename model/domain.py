@@ -102,3 +102,28 @@ class Operation(Step):
         return self.pre_op.end_time
     
 
+class Job:
+    '''A collection of sequent operations.'''
+    def __init__(self, ops:list=None) -> None:
+        self.__ops = []  # type: list[Operation]
+        self.extend(ops or []) 
+    
+    def __getitem__(self, idx):
+        try:
+            op = self.__ops[idx]
+        except IndexError:
+            msg = f'Operation index {idx} out of range.'
+            raise IndexError(msg)
+        else:
+            return op
+
+    def __iter__(self): return (op for op in self.__ops)
+
+    def __len__(self): return len(self.__ops)
+
+
+    def append(self, op): 
+        if op: self.__ops.append(op)
+
+    def extend(self, ops:list): 
+        for op in ops: self.append(op)
