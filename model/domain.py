@@ -1,5 +1,7 @@
 '''Basic domain class: Machine and Operation.
 '''
+import random
+
 
 
 class Step:
@@ -7,7 +9,7 @@ class Step:
     '''
     def __init__(self, id:int) -> None:
         self.id = id
-        # machine chain
+        # machine chain to solve
         self.__pre_op = None   # type: Step
         self.__next_op = None   # type: Operation
     
@@ -42,11 +44,12 @@ class Machine(Step):
 
 class Operation(Step):
     '''The operation.'''
-    def __init__(self, id: int, machine:Machine, duration:float) -> None:
+    def __init__(self, id:int, machine:Machine, duration:float, parent=None) -> None:
         super().__init__(id)
         # properties: keep constant
         self.__machine = machine
         self.__duration = duration
+        self.parent = parent
 
         # job chain
         self.__pre_job_op = None   # type: Operation
@@ -84,6 +87,14 @@ class Operation(Step):
         '''Update start time: the late start time in job chain and machine chain.'''
         self.__start_time = max(self.__job_chain_start_time(), \
             self.__machine_chain_start_time())
+    
+
+    def copy(self):
+        '''Copy to a new instance with same properties. Keep same job chain sequence.'''
+        op = Operation(self.id, self.__machine, self.__duration, self.parent)
+        op.__pre_job_op = self.__pre_job_op
+        op.__next_job_op = self.__next_job_op
+        return op
 
 
     def __job_chain_start_time(self) -> float:
@@ -105,25 +116,29 @@ class Operation(Step):
 class Job:
     '''A collection of sequent operations.'''
     def __init__(self, ops:list=None) -> None:
+        '''Initialize job with operation list.'''
         self.__ops = []  # type: list[Operation]
-        self.extend(ops or []) 
+        for op in (ops or []):
+            op.parent = self
+            self.__ops.append(op)
     
-    def __getitem__(self, idx):
-        try:
-            op = self.__ops[idx]
-        except IndexError:
-            msg = f'Operation index {idx} out of range.'
-            raise IndexError(msg)
-        else:
-            return op
 
-    def __iter__(self): return (op for op in self.__ops)
+    def add_random_ops(self, machines:list, lower_duration:float=5, upper_duration:float=30):
+        '''Add random operations based on steps defined by machine list.
 
-    def __len__(self): return len(self.__ops)
+        Args:
+            machines (list): Machine list defines the sequence of operations.
+            lower_duration (float, optional): Lower bound of operation duration. Defaults to 5.
+            upper_duration (float, optional): Upper bound of operation duration. Defaults to 30.
+        '''
+        for i, machine in enumerate(machines):
+            duration = random.randint(int(lower_duration), int(upper_duration))
+            self.__ops.append(Operation(i, machine, duration, parent=self))
 
 
-    def append(self, op): 
-        if op: self.__ops.append(op)
-
-    def extend(self, ops:list): 
-        for op in ops: self.append(op)
+    def create_chain(self):
+        '''Create sequence of operations.'''
+        pre = None
+        for op in self.__ops:
+            op.pre_job_op = pre
+            pre = op
