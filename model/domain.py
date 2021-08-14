@@ -44,12 +44,12 @@ class Machine(Step):
 
 class Operation(Step):
     '''The operation.'''
-    def __init__(self, id:int, machine:Machine, duration:float, parent=None) -> None:
+    def __init__(self, id:int, job, machine:Machine, duration:float) -> None:
         super().__init__(id)
         # properties: keep constant
         self.__machine = machine
         self.__duration = duration
-        self.parent = parent
+        self.job = job
 
         # job chain
         self.__pre_job_op = None   # type: Operation
@@ -91,7 +91,7 @@ class Operation(Step):
 
     def copy(self):
         '''Copy to a new instance with same properties. Keep same job chain sequence.'''
-        op = Operation(self.id, self.__machine, self.__duration, self.parent)
+        op = Operation(self.id, self.job, self.__machine, self.__duration)
         op.__pre_job_op = self.__pre_job_op
         op.__next_job_op = self.__next_job_op
         return op
@@ -115,11 +115,12 @@ class Operation(Step):
 
 class Job:
     '''A collection of sequent operations.'''
-    def __init__(self, ops:list=None) -> None:
+    def __init__(self, id:int, ops:list=None) -> None:
         '''Initialize job with operation list.'''
+        self.id = id
         self.__ops = []  # type: list[Operation]
         for op in (ops or []):
-            op.parent = self
+            op.job = self
             self.__ops.append(op)
     
 
@@ -133,7 +134,7 @@ class Job:
         '''
         for i, machine in enumerate(machines):
             duration = random.randint(int(lower_duration), int(upper_duration))
-            self.__ops.append(Operation(i, machine, duration, parent=self))
+            self.__ops.append(Operation(i, self, machine, duration))
 
 
     def create_chain(self):

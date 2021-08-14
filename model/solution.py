@@ -2,6 +2,7 @@
 assigned in each machine, and the deduced start time of each operation accordingly.
 '''
 
+import matplotlib.pyplot as plt
 from model.domain import Operation
 from ..common.graph import DirectedGraph
 from .problem import JSProblem
@@ -15,6 +16,7 @@ class JSSolution:
         Args:
             problem (JSProblem): Problem to solve.
         '''
+        self.__problem = problem
         self.__operations = [op.copy() for op in problem.operations]
 
         # operations in topological order
@@ -29,9 +31,21 @@ class JSSolution:
     def sorted_ops(self): return self.__sorted_ops
 
  
-    def evaluate(self) -> list:
-        '''Evaluate current solution: update topological order and start time of each operation.'''
-        pass
+    def evaluate(self, op:Operation=None):
+        '''Evaluate specified and succeeding operations of current solution, especially 
+        work time. Generally the machine chain was changed before calling this method.
+        '''
+        # update topological order due to the changed machine chain
+        self.__update_graph()
+        if not self.__sorted_ops:
+            raise Exception("Invalid solution due to recursive dependencies.")
+
+        # the position of target process
+        pos = 0 if op is None else self.__sorted_ops.index(op)
+        
+        # update process by the topological order
+        for i in range(pos, len(self.__sorted_ops)):
+            self.__sorted_ops[i].update_start_time()
 
 
     def makespan(self) -> float:
@@ -45,9 +59,32 @@ class JSSolution:
         '''If current solution is valid or not. 
         Note to call this method after evaluating the solution.
         '''
-        pass
+        return bool(self.__sorted_ops)
 
-    
+
+    def plot(self):
+        '''Plot Gantt chart with `matplotlib`.'''
+        # set chart style
+        fig, (gnt_job, gnt_machine) = plt.subplots(2,1, sharex=True)
+        
+        gnt_job.set(ylabel='Job', \
+            yticks=range(len(self.__problem.jobs)), \
+            yticklabels=[f'Job-{job.id}' for job in self.__problem.jobs])
+        gnt_job.grid(which='major', axis='x', linestyle='--')
+        
+        gnt_machine.set(xlabel='Time', ylabel='Machine',\
+            yticks=range(len(self.__problem.machines)), \
+            yticklabels=[f'M-{machine.id}' for machine in self.__problem.machines])
+        gnt_machine.grid(which='major', axis='x', linestyle='--')
+
+        # plot gantt task
+        self.__plot_from_job_view(gnt_job)
+        self.__plot_from_machine_view(gnt_machine)
+
+        # show figure
+        plt.show()
+
+ 
     def __update_graph(self):
         '''Update the associated directed graph and the topological order accordingly.'''
         # add the dummy source and sink node
@@ -76,7 +113,16 @@ class JSSolution:
         self.__sorted_ops = ops[1:-1] if ops else None
 
 
+    def __plot_from_job_view(self, gnt):
+        '''Plot Gantt chart from job view.'''
+        for op in self.__operations:
+            gnt.barh(op.job.id, op.duration, left=op.start_time, height=0.5)
     
+
+    def __plot_from_machine_view(self, gnt):
+        '''Plot Gantt chart from machine view.'''
+        for op in self.__operations:
+            gnt.barh(op.machine.id, op.duration, left=op.start_time, height=0.5)
 
 
     

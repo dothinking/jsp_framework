@@ -30,37 +30,45 @@ class JSProblem:
         self.__operations = None   # type: list[Operation]
 
         # benchmark only
-        self.__optimum = None  # type: float
+        self.__optimum = None      # type: float
 
         # load jobs directly
+        self.__jobs = []           # type: list[Job]
         if jobs:
-            pass
+            self.__jobs = jobs
 
         # random jobs
         elif num_jobs and num_machines:
-            jobs = self.__generate_random_jobs(num_jobs, num_machines)
+            self.__jobs = self.__generate_random_jobs(num_jobs, num_machines)
         
         # jobs from benchmark
         elif benchmark:
-            jobs = self.__load_benchmark_jobs(name=benchmark)
+            self.__jobs = self.__load_benchmark_jobs(name=benchmark)
         
         # jobs from user input file
         elif input_file:
-            jobs = self.__load_jobs(input_file)
-        
-        else:
-            jobs = []        
+            self.__jobs = self.__load_jobs(input_file)
+            
 
         # create operation sequence with each job
-        self.__create_job_chain(jobs)
+        self.__create_job_chain()
 
 
     
     @property
+    def optimum(self): return self.__optimum    
+    
+    @property
+    def jobs(self): return self.__jobs
+
+    @property
     def operations(self): return self.__operations
 
     @property
-    def optimum(self): return self.__optimum
+    def machines(self):
+        machines = list(set(op.machine for op in self.__operations))
+        machines.sort(key=lambda machine: machine.id)
+        return machines
 
 
     def __load_benchmark_jobs(self, name:str) -> list:
@@ -103,7 +111,7 @@ class JSProblem:
 
         # create a job per line
         jobs = []
-        for line in lines[1:num_jobs+1]:
+        for n, line in enumerate(lines[1:num_jobs+1]):
             ops = []
             fields = list(map(int, line.strip().split()))
             for i in range(num_machines):
@@ -111,7 +119,7 @@ class JSProblem:
                 ops.append(op)
             
             # create job
-            jobs.append(Job(ops))
+            jobs.append(Job(n, ops))
         
         return jobs
 
@@ -123,18 +131,18 @@ class JSProblem:
 
         # job list
         jobs = []
-        for _ in range(num_jobs):
+        for i in range(num_jobs):
             random.shuffle(machines)
-            job = Job()
+            job = Job(i)
             job.add_random_ops(machines)
             jobs.append(job)
         
         return jobs
 
 
-    def __create_job_chain(self, jobs:list):
+    def __create_job_chain(self):
         '''Create sequence of operations.'''
-        for job in jobs: 
+        for job in self.__jobs: 
             job.create_chain()
 
 
