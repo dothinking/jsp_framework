@@ -17,14 +17,14 @@ class JSSolution:
             problem (JSProblem): Problem to solve.
         '''
         self.__problem = problem
-        self.__operations = [op.copy() for op in problem.operations]
+        self.__ops = [op.copy() for op in problem.ops]
 
         # operations in topological order
         self.__sorted_ops = None # type: list[Operation]
     
 
     @property
-    def ops(self): return self.__operations
+    def ops(self): return self.__ops
 
 
     @property
@@ -52,7 +52,7 @@ class JSSolution:
         '''Makespan of current solution. 
         Only available when the solution is feasible; otherwise None.
         '''
-        return max(lambda op: op.end_time, self.__operations) if self.is_feasible() else None
+        return max(lambda op: op.end_time, self.__ops) if self.is_feasible() else None
 
 
     def is_feasible(self) -> bool:
@@ -88,12 +88,12 @@ class JSSolution:
     def __update_graph(self):
         '''Update the associated directed graph and the topological order accordingly.'''
         # add the dummy source and sink node
-        source = Operation(id=-1, machine=None, duration=0)
-        sink = Operation(id=-1, machine=None, duration=0)
+        source = Operation(id=-1, job=None, machine=None, duration=0)
+        sink = Operation(id=-1, job=None, machine=None, duration=0)
 
         # identical directed graph
         graph = DirectedGraph()
-        for op in self.__operations:
+        for op in self.__ops:
             # job chain edge
             if op.pre_job_op is None:
                 graph.add_edge(source, op)
@@ -115,13 +115,13 @@ class JSSolution:
 
     def __plot_from_job_view(self, gnt):
         '''Plot Gantt chart from job view.'''
-        for op in self.__operations:
+        for op in self.__ops:
             gnt.barh(op.job.id, op.duration, left=op.start_time, height=0.5)
     
 
     def __plot_from_machine_view(self, gnt):
         '''Plot Gantt chart from machine view.'''
-        for op in self.__operations:
+        for op in self.__ops:
             gnt.barh(op.machine.id, op.duration, left=op.start_time, height=0.5)
 
 

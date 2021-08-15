@@ -11,67 +11,72 @@ class JSProblem:
     '''Base class for Job Shop Schedule Problem.
     '''
 
-    def __init__(self, jobs:list=None, 
+    def __init__(self, ops:list=None, 
                         num_jobs:int=0, num_machines:int=0, 
                         benchmark:str=None, 
                         input_file:str=None) -> None:
-        """Initialize problem by job list, or random problem with specified count of jobs 
+        '''Initialize problem by job list, or random problem with specified count of jobs 
         and machines, or just load data from benchmark/user-defined file. 
         
         In addition, job chain (the sequence of job operations) is created.
 
         Args:
-            jobs (list, optional): Job list to schedule. 
+            ops (list, optional): Operation list to schedule. 
             num_jobs (int, optional): Initialize random problem by specified count of jobs. 
             num_machines (int, optional): Initialize random problem by specified count of machines. 
             benchmark (str, optional): Benchmark name to load associated data.
             input_file (str, optional): User defined data file path. 
-        """        
-        self.__operations = None   # type: list[Operation]
+        '''
+        # initialize operations
+        self.__ops = []   # type: list[Operation]
+        if ops:
+            self.__ops = ops
 
-        # benchmark only
-        self.__optimum = None      # type: float
-
-        # load jobs directly
-        self.__jobs = []           # type: list[Job]
-        if jobs:
-            self.__jobs = jobs
-
-        # random jobs
+        # random operations
         elif num_jobs and num_machines:
-            self.__jobs = self.__generate_random_jobs(num_jobs, num_machines)
+            self.__ops = self.__generate_by_random(num_jobs, num_machines)
         
-        # jobs from benchmark
+        # from benchmark
         elif benchmark:
-            self.__jobs = self.__load_benchmark_jobs(name=benchmark)
+            self.__ops = self.__load_from_benchmark(name=benchmark)
         
-        # jobs from user input file
+        # from user input file
         elif input_file:
-            self.__jobs = self.__load_jobs(input_file)
-            
+            self.__ops = self.__load_from_file(input_file)            
 
-        # create operation sequence with each job
-        self.__create_job_chain()
+        # collect jobs and machines
+        self.__jobs, self.__machines = self.__collect_jobs_and_machines()
+        for job in self.__jobs: job.create_chain()  # create job chain
 
-
+        # solution
+        self.solution = None      # to solve  
+        self.__optimum = None     # benchmark value
     
-    @property
-    def optimum(self): return self.__optimum    
     
     @property
     def jobs(self): return self.__jobs
 
     @property
-    def operations(self): return self.__operations
+    def machines(self): return self.__machines
 
     @property
-    def machines(self):
-        machines = list(set(op.machine for op in self.__operations))
-        machines.sort(key=lambda machine: machine.id)
-        return machines
+    def ops(self): return self.__ops
+
+    @property
+    def solution(self): return self.__solution    
+
+    @property
+    def optimum(self): return self.__optimum
 
 
-    def __load_benchmark_jobs(self, name:str) -> list:
+    def __collect_jobs_and_machines(self):
+        jobs, machines = zip(*((op.job, op.machine) for op in self.__ops))
+        jobs = sorted(set(jobs), key=lambda job: job.id)
+        machines = sorted(set(machines), key=lambda machine: machine.id)
+        return jobs, machines
+
+
+    def __load_from_benchmark(self, name:str) -> list:
         '''Load jobs and optimum value from benchmark data.'''
         # benchmark path
         script_path = os.path.abspath(__file__)
@@ -93,10 +98,10 @@ class JSProblem:
             raise Exception(f'Cannot find benchmark name: {name}.')
         
         # load jobs
-        return self.__load_jobs(os.path.join(benchmark_path, filename))
+        return self.__load_from_file(os.path.join(benchmark_path, filename))
    
 
-    def __load_jobs(self, filename:str) -> list:
+    def __load_from_file(self, filename:str) -> list:
         '''Load jobs from formatted data file.'''
         if not os.path.exists(filename):
             raise Exception(f'Cannot find data file: {filename}.')
@@ -108,47 +113,38 @@ class JSProblem:
         # first line: jobs-count machines-count
         num_jobs, num_machines = lines[0].strip().split()
         machines = [Machine(i) for i in range(num_machines)]
+        jobs = [Job(i) for i in range(num_jobs)]
 
-        # create a job per line
-        jobs = []
-        for n, line in enumerate(lines[1:num_jobs+1]):
-            ops = []
+        # one job per line
+        ops = []
+        i = 0
+        for line, job in zip(lines[1:num_jobs+1], jobs):
             fields = list(map(int, line.strip().split()))
-            for i in range(num_machines):
-                op = Operation(i, machine=machines[fields[2*i]], duration=fields[2*i+1])
+            for j in range(num_machines):
+                op = Operation(id=i, job=job, machine=machines[fields[2*j]], duration=fields[2*j+1])
                 ops.append(op)
-            
-            # create job
-            jobs.append(Job(n, ops))
+                i += 1
         
-        return jobs
+        return ops
 
 
-    def __generate_random_jobs(self, num_jobs:int, num_machines:int) -> list:
+    def __generate_by_random(self, num_jobs:int, num_machines:int) -> list:
         '''Generate random jobs with specified count of machine and job.'''
-        # machine list
+        # job list and machine list
         machines = [Machine(i) for i in range(num_machines)]
+        jobs = [Job(i) for i in range(num_jobs)]
 
-        # job list
-        jobs = []
-        for i in range(num_jobs):
+        # random operations
+        ops = []
+        i = 0
+        lower, upper = 10, 50
+        for job in jobs:
             random.shuffle(machines)
-            job = Job(i)
-            job.add_random_ops(machines)
-            jobs.append(job)
+            for machine in machines:
+                duration = random.randint(lower, upper)
+                op = Operation(id=i, job=job, machine=machine, duration=duration)
+                ops.append(op)
+                i += 1
         
-        return jobs
-
-
-    def __create_job_chain(self):
-        '''Create sequence of operations.'''
-        for job in self.__jobs: 
-            job.create_chain()
-
-
-
-    
-
-
-    
+        return ops    
 
