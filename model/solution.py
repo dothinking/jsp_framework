@@ -4,7 +4,6 @@ assigned in each machine, and the deduced start time of each operation according
 
 from collections import defaultdict
 from matplotlib.container import BarContainer
-
 from .domain import Operation
 from .variable import OperationStep
 from common.graph import DirectedGraph
@@ -31,19 +30,24 @@ class JSSolution:
     @property
     def ops(self): return self.__ops
 
-
     @property
     def sorted_ops(self): return self.__sorted_ops
 
+    @property
+    def makespan(self) -> float:
+        '''Makespan of current solution. 
+        Only available when the solution is feasible; otherwise None.
+        '''
+        return max(map(lambda op: op.end_time, self.__ops)) if self.is_feasible() else None
  
-    def evaluate(self, op:Operation=None, callback=None):
+
+    def evaluate(self, op:Operation=None):
         '''Evaluate specified and succeeding operations of current solution, especially 
         work time. Generally the machine chain was changed before calling this method.
 
         Args:
             op (Operation, optional): The operation step to update. Defaults to None,
                 i.e. the first operation.
-            callback (function, optional): Run user defined function. Defaults to None.
         '''
         # update topological order due to the changed machine chain
         self.__update_graph()
@@ -56,17 +60,6 @@ class JSSolution:
         # update process by the topological order
         for i in range(pos, len(self.__sorted_ops)):
             self.__sorted_ops[i].update_start_time()
-        
-        # user defined function
-        if callback: callback(self)
-
-
-
-    def makespan(self) -> float:
-        '''Makespan of current solution. 
-        Only available when the solution is feasible; otherwise None.
-        '''
-        return max(lambda op: op.end_time, self.__ops) if self.is_feasible() else None
 
 
     def is_feasible(self) -> bool:
@@ -84,6 +77,9 @@ class JSSolution:
         '''
         gnt_job, gnt_machine = axes
 
+        # title
+        gnt_job.set_title(f'Result: {self.makespan or "n.a."}', color='gray', fontsize='small', loc='right')
+
         # clear plotted bars
         bars = [bar for bar in gnt_job.containers if isinstance(bar, BarContainer)]
         bars.extend([bar for bar in gnt_machine.containers if isinstance(bar, BarContainer)])
@@ -99,6 +95,7 @@ class JSSolution:
         for axis in axes:
             axis.relim()
             axis.autoscale()
+
 
     def __create_job_chain(self):
         '''Initialize job chain based on the sequence of operations.'''

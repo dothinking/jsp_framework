@@ -1,14 +1,10 @@
 from model.problem import JSProblem
-from model.solver import JSSolver
-
+from solver.SampleSolver import SampleSolver
 
 
 if __name__=='__main__':
 
     problem = JSProblem(benchmark='ft06')
 
-    s = JSSolver(name='default')
-
+    s = SampleSolver(name='sample')
     s.solve(problem=problem)
-
-    print('done...')

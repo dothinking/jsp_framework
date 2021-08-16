@@ -4,7 +4,7 @@
 import os
 import json
 import random
-import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 from .domain import Job, Machine, Operation
 
@@ -27,10 +27,17 @@ class JSProblem:
             benchmark (str, optional): Benchmark name to load associated data.
             input_file (str, optional): User defined data file path. 
         '''
+        # solution
+        self.__solution = None      # to solve  
+        self.__optimum = None     # benchmark value
+
+        # dynamic Gantt chart
+        self.__gantt_animation = None
+        self.__need_update_chart = False # update chart when found a better solution
+
         # initialize operations
         self.__ops = []   # type: list[Operation]
-        if ops:
-            self.__ops = ops
+        if ops: self.__ops = ops
 
         # random operations
         elif num_jobs and num_machines:
@@ -46,10 +53,7 @@ class JSProblem:
 
         # collect jobs and machines
         self.__jobs, self.__machines = self.__collect_jobs_and_machines()
-
-        # solution
-        self.solution = None      # to solve  
-        self.__optimum = None     # benchmark value
+        
     
     
     @property
@@ -64,12 +68,38 @@ class JSProblem:
     @property
     def optimum(self): return self.__optimum
 
+    @property
+    def solution(self): return self.__solution
 
-    def gantt(self):
-        '''Initialize empty Gantt chart with `matplotlib`.'''
+
+    def update_solution(self, solution):
+        '''Set a better solution.
+
+        Args:
+            solution (JSSolution): A better solution.
+        '''
+        # evaluate solution, e.g. deduce start time
+        solution.evaluate()
+        self.__solution = solution
+        self.__need_update_chart = True
+
+
+    def dynamic_gantt(self, callback=None, interval:int=2000):
+        '''Initialize empty Gantt chart with `matplotlib` and update it dynamically.
+
+        Args:
+            callback (function, optional): User defined function taking JSSolution as input. 
+            interval (int, optional): Refresh interval (in ms). Defaults to 2000 ms.
+        '''
+        # two subplots
         fig, (gnt_job, gnt_machine) = plt.subplots(2,1, sharex=True)
 
-        # set chart style        
+        # title and sub-title
+        fig.suptitle('Gantt Chart', fontweight='bold')
+        if self.__optimum is not None:
+            gnt_job.set_title(f'Optimum: {self.__optimum}', color='gray', fontsize='small')
+
+        # axes style        
         gnt_job.set(ylabel='Job', \
             yticks=range(len(self.__jobs)), \
             yticklabels=[f'Job-{job.id}' for job in self.__jobs])
@@ -80,16 +110,24 @@ class JSProblem:
             yticklabels=[f'M-{machine.id}' for machine in self.__machines])
         gnt_machine.grid(which='major', axis='x', linestyle='--')
 
-        def run(i):
-            print('------------------')
-            if self.solution:
-                self.solution.plot((gnt_job, gnt_machine))
-
-        self.ani = FuncAnimation(fig, run, interval = 1000, repeat=True)
-
-        return gnt_job, gnt_machine
+        # animation
+        self.__gantt_animation = FuncAnimation(fig, \
+            func=lambda i: self.__update_gantt_chart(axes=(gnt_job, gnt_machine), callback=callback), \
+            interval=interval, \
+            repeat=False)
     
-       
+
+    def __update_gantt_chart(self, axes:tuple, callback=None):
+        if not self.__need_update_chart: 
+            return
+        else:
+            self.__need_update_chart = False
+
+        # update gantt chart
+        self.solution.plot(axes)
+        
+        # run user defined function
+        if callback: callback(self.solution)
 
 
     def __collect_jobs_and_machines(self):
@@ -97,6 +135,7 @@ class JSProblem:
         jobs = sorted(set(jobs), key=lambda job: job.id)
         machines = sorted(set(machines), key=lambda machine: machine.id)
         return jobs, machines
+
 
     def __load_from_benchmark(self, name:str) -> list:
         '''Load jobs and optimum value from benchmark data.'''
