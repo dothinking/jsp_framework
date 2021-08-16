@@ -4,6 +4,8 @@
 import os
 import json
 import random
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 from .domain import Job, Machine, Operation
 
 
@@ -15,10 +17,8 @@ class JSProblem:
                         num_jobs:int=0, num_machines:int=0, 
                         benchmark:str=None, 
                         input_file:str=None) -> None:
-        '''Initialize problem by job list, or random problem with specified count of jobs 
+        '''Initialize problem by operation list, or random problem with specified count of jobs 
         and machines, or just load data from benchmark/user-defined file. 
-        
-        In addition, job chain (the sequence of job operations) is created.
 
         Args:
             ops (list, optional): Operation list to schedule. 
@@ -46,7 +46,6 @@ class JSProblem:
 
         # collect jobs and machines
         self.__jobs, self.__machines = self.__collect_jobs_and_machines()
-        for job in self.__jobs: job.create_chain()  # create job chain
 
         # solution
         self.solution = None      # to solve  
@@ -63,10 +62,34 @@ class JSProblem:
     def ops(self): return self.__ops
 
     @property
-    def solution(self): return self.__solution    
-
-    @property
     def optimum(self): return self.__optimum
+
+
+    def gantt(self):
+        '''Initialize empty Gantt chart with `matplotlib`.'''
+        fig, (gnt_job, gnt_machine) = plt.subplots(2,1, sharex=True)
+
+        # set chart style        
+        gnt_job.set(ylabel='Job', \
+            yticks=range(len(self.__jobs)), \
+            yticklabels=[f'Job-{job.id}' for job in self.__jobs])
+        gnt_job.grid(which='major', axis='x', linestyle='--')
+        
+        gnt_machine.set(xlabel='Time', ylabel='Machine',\
+            yticks=range(len(self.__machines)), \
+            yticklabels=[f'M-{machine.id}' for machine in self.__machines])
+        gnt_machine.grid(which='major', axis='x', linestyle='--')
+
+        def run(i):
+            print('------------------')
+            if self.solution:
+                self.solution.plot((gnt_job, gnt_machine))
+
+        self.ani = FuncAnimation(fig, run, interval = 1000, repeat=True)
+
+        return gnt_job, gnt_machine
+    
+       
 
 
     def __collect_jobs_and_machines(self):
@@ -74,7 +97,6 @@ class JSProblem:
         jobs = sorted(set(jobs), key=lambda job: job.id)
         machines = sorted(set(machines), key=lambda machine: machine.id)
         return jobs, machines
-
 
     def __load_from_benchmark(self, name:str) -> list:
         '''Load jobs and optimum value from benchmark data.'''
@@ -111,7 +133,7 @@ class JSProblem:
             lines = [line for line in f.readlines() if not line.startswith('#')]
         
         # first line: jobs-count machines-count
-        num_jobs, num_machines = lines[0].strip().split()
+        num_jobs, num_machines = map(int, lines[0].strip().split())
         machines = [Machine(i) for i in range(num_machines)]
         jobs = [Job(i) for i in range(num_jobs)]
 

@@ -2,9 +2,12 @@
 assigned in each machine, and the deduced start time of each operation accordingly.
 '''
 
-import matplotlib.pyplot as plt
-from model.domain import Operation
-from ..common.graph import DirectedGraph
+from collections import defaultdict
+from matplotlib.container import BarContainer
+
+from .domain import Operation
+from .variable import OperationStep
+from common.graph import DirectedGraph
 from .problem import JSProblem
 
 
@@ -16,11 +19,13 @@ class JSSolution:
         Args:
             problem (JSProblem): Problem to solve.
         '''
-        self.__problem = problem
-        self.__ops = [op.copy() for op in problem.ops]
+        self.__ops = [OperationStep(op) for op in problem.ops]
+
+        # initialize job chain
+        self.__create_job_chain()
 
         # operations in topological order
-        self.__sorted_ops = None # type: list[Operation]
+        self.__sorted_ops = None # type: list[OperationStep]
     
 
     @property
@@ -31,9 +36,14 @@ class JSSolution:
     def sorted_ops(self): return self.__sorted_ops
 
  
-    def evaluate(self, op:Operation=None):
+    def evaluate(self, op:Operation=None, callback=None):
         '''Evaluate specified and succeeding operations of current solution, especially 
         work time. Generally the machine chain was changed before calling this method.
+
+        Args:
+            op (Operation, optional): The operation step to update. Defaults to None,
+                i.e. the first operation.
+            callback (function, optional): Run user defined function. Defaults to None.
         '''
         # update topological order due to the changed machine chain
         self.__update_graph()
@@ -46,6 +56,10 @@ class JSSolution:
         # update process by the topological order
         for i in range(pos, len(self.__sorted_ops)):
             self.__sorted_ops[i].update_start_time()
+        
+        # user defined function
+        if callback: callback(self)
+
 
 
     def makespan(self) -> float:
@@ -61,35 +75,52 @@ class JSSolution:
         '''
         return bool(self.__sorted_ops)
 
+    
+    def plot(self, axes:tuple):
+        '''Plot Gantt chart.
 
-    def plot(self):
-        '''Plot Gantt chart with `matplotlib`.'''
-        # set chart style
-        fig, (gnt_job, gnt_machine) = plt.subplots(2,1, sharex=True)
+        Args:
+            axes (tuple): Axes of `matplotlib` figure: (job sub-plot axis, machine sub-plot axis).
+        '''
+        gnt_job, gnt_machine = axes
+
+        # clear plotted bars
+        bars = [bar for bar in gnt_job.containers if isinstance(bar, BarContainer)]
+        bars.extend([bar for bar in gnt_machine.containers if isinstance(bar, BarContainer)])
+        for bar in bars: 
+            bar.remove()
         
-        gnt_job.set(ylabel='Job', \
-            yticks=range(len(self.__problem.jobs)), \
-            yticklabels=[f'Job-{job.id}' for job in self.__problem.jobs])
-        gnt_job.grid(which='major', axis='x', linestyle='--')
+        # plot new bars
+        for op in self.__ops:
+            gnt_job.barh(op.source.job.id, op.source.duration, left=op.start_time, height=0.5)
+            gnt_machine.barh(op.source.machine.id, op.source.duration, left=op.start_time, height=0.5)
+            
+        # reset x-limit
+        for axis in axes:
+            axis.relim()
+            axis.autoscale()
+
+    def __create_job_chain(self):
+        '''Initialize job chain based on the sequence of operations.'''
+        # group operations with job
+        job_chains = defaultdict(list)
+        for op in self.__ops:
+            job_chains[op.source.job].append(op)
         
-        gnt_machine.set(xlabel='Time', ylabel='Machine',\
-            yticks=range(len(self.__problem.machines)), \
-            yticklabels=[f'M-{machine.id}' for machine in self.__problem.machines])
-        gnt_machine.grid(which='major', axis='x', linestyle='--')
-
-        # plot gantt task
-        self.__plot_from_job_view(gnt_job)
-        self.__plot_from_machine_view(gnt_machine)
-
-        # show figure
-        plt.show()
+        # create chain for operations of each job
+        def create_chain(ops:list):
+            pre = None
+            for op in ops:
+                op.pre_job_op = pre
+                pre = op
+        for job, ops in job_chains.items():
+            create_chain(ops)
 
  
     def __update_graph(self):
         '''Update the associated directed graph and the topological order accordingly.'''
         # add the dummy source and sink node
-        source = Operation(id=-1, job=None, machine=None, duration=0)
-        sink = Operation(id=-1, job=None, machine=None, duration=0)
+        source, sink = OperationStep(), OperationStep()
 
         # identical directed graph
         graph = DirectedGraph()
@@ -104,8 +135,8 @@ class JSSolution:
                 graph.add_edge(op, sink)
             
             # machine chain edge
-            if op.next_op and op.next_op!=op.next_job_op:
-                graph.add_edge(op, op.next_op)
+            if op.next_machine_op and op.next_machine_op!=op.next_job_op:
+                graph.add_edge(op, op.next_machine_op)
 
         # topological order:
         # except the dummy source and sink nodes
@@ -113,16 +144,4 @@ class JSSolution:
         self.__sorted_ops = ops[1:-1] if ops else None
 
 
-    def __plot_from_job_view(self, gnt):
-        '''Plot Gantt chart from job view.'''
-        for op in self.__ops:
-            gnt.barh(op.job.id, op.duration, left=op.start_time, height=0.5)
-    
-
-    def __plot_from_machine_view(self, gnt):
-        '''Plot Gantt chart from machine view.'''
-        for op in self.__ops:
-            gnt.barh(op.machine.id, op.duration, left=op.start_time, height=0.5)
-
-
-    
+        

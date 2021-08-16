@@ -14,16 +14,27 @@ class DirectedGraph:
         self.__in_degrees = defaultdict(int)
     
 
+    def __str__(self) -> str:
+        '''Show adjacent list of graph.'''
+        f = lambda node: str(node.id)
+        items = [f'{node.id}: {",".join(map(f, node_list))}' for node, node_list in self.__adjacency.items()]
+        return '\n'.join(items)
+
+
     def add_edge(self, node_from, node_to):
-        '''Add a directed edge from `node_from` to `node_to`.
+        '''Add a directed edge from `node_from` to `node_to`. 
 
         Args:
             node_from: Start node in user defined type.
             node_to: End node in user defined type.
         '''
-        self.__adjacency[node_from].append(node_to)
+        self.__adjacency[node_from].append(node_to)        
+
+        # update in degree
+        # NOTE: the in degree of source node is always zero
+        if node_from not in self.__in_degrees:
+            self.__in_degrees[node_from] = 0
         self.__in_degrees[node_to] += 1
-        self.__num_e += 1
 
 
     def sort(self) -> list:
@@ -38,7 +49,6 @@ class DirectedGraph:
             in_degrees[node] = degree # copy in degrees
             if degree==0:
                 q.append(node)
-        
         if not q: return [] # no valid topological order
 
         # bfs
@@ -52,8 +62,7 @@ class DirectedGraph:
         
         # the in-degree of all nodes must be zero if the Topological Sorting is successful
         for node, in_degree in in_degrees.items():
-            if in_degree==0: 
-                return []
+            if in_degree!=0: return []
         
         return res
     
