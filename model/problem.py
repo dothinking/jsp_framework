@@ -78,8 +78,6 @@ class JSProblem:
         Args:
             solution (JSSolution): A better solution.
         '''
-        # evaluate solution, e.g. deduce start time
-        solution.evaluate()
         self.__solution = solution
         self.__need_update_chart = True
 

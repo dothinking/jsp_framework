@@ -28,6 +28,7 @@ class SampleSolver(JSSolver):
         for machine, ops in machine_chains.items():
             ops.sort(key=lambda op: op.source.job.id)
             create_chain(ops)
+            solution.evaluate()
 
             # update solution
             time.sleep(1)

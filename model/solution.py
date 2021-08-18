@@ -23,7 +23,7 @@ class JSSolution:
         # initialize job chain
         self.__create_job_chain()
 
-        # operations in topological order
+        # operations in topological order: available for disjunctive graph model only
         self.__sorted_ops = None # type: list[OperationStep]
     
 
@@ -39,20 +39,59 @@ class JSSolution:
         Only available when the solution is feasible; otherwise None.
         '''
         return max(map(lambda op: op.end_time, self.__ops)) if self.is_feasible() else None
- 
 
-    def evaluate(self, op:Operation=None):
+
+    def is_feasible(self) -> bool:
+        '''If current solution is valid or not. 
+        Note to call this method after evaluating the solution if based on disjunctive graph model.
+        '''
+        # check topological order if disjunctive graph model, 
+        # otherwise check the start time further directly
+        if self.__sorted_ops: return True
+
+        # validate job chain
+        job_chains = defaultdict(list)
+        for op in self.__ops:
+            job_chains[op.source.job].append(op)
+        
+        for job, ops in job_chains.items():
+            ops.sort(key=lambda op: op.id) # sort in job sequence, i.e. default id order
+            ref = 0
+            for op in ops:
+                if op.end_time <= ref: return False
+                ref = op.end_time
+        
+        # validate machine chain
+        machine_chains = defaultdict(list)
+        for op in self.__ops:
+            machine_chains[op.source.machine].append(op)
+        
+        for machine, ops in machine_chains.items():
+            ops.sort(key=lambda op: op.start_time) # sort by start time
+            ref = 0
+            for op in ops:
+                if op.end_time <= ref: return False
+                ref = op.end_time
+        
+        return True
+
+
+    def evaluate(self, op:Operation=None) -> bool:
         '''Evaluate specified and succeeding operations of current solution, especially 
         work time. Generally the machine chain was changed before calling this method.
+
+        NOTE: this method is only available for disjunctive graph model.
 
         Args:
             op (Operation, optional): The operation step to update. Defaults to None,
                 i.e. the first operation.
+        
+        Returns:
+            bool: True if current solution is feasible.
         '''
         # update topological order due to the changed machine chain
         self.__update_graph()
-        if not self.__sorted_ops:
-            raise Exception("Invalid solution due to recursive dependencies.")
+        if not self.__sorted_ops: return False
 
         # the position of target process
         pos = 0 if op is None else self.__sorted_ops.index(op)
@@ -60,15 +99,10 @@ class JSSolution:
         # update process by the topological order
         for i in range(pos, len(self.__sorted_ops)):
             self.__sorted_ops[i].update_start_time()
+        
+        return True
 
 
-    def is_feasible(self) -> bool:
-        '''If current solution is valid or not. 
-        Note to call this method after evaluating the solution.
-        '''
-        return bool(self.__sorted_ops)
-
-    
     def plot(self, axes:tuple):
         '''Plot Gantt chart.
 

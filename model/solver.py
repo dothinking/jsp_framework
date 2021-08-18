@@ -34,7 +34,7 @@ class JSSolver:
         thread = Thread(target=self.__solving_thread, args=(problem,))
         thread.start()
 
-        # show gantt chart in main thread
+        # show gantt chart and listen to the solution update in main thread
         problem.dynamic_gantt(callback=callback, interval=interval)
         plt.show()
 
