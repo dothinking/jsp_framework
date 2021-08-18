@@ -20,7 +20,9 @@ class JSSolution:
         '''
         self.__ops = [OperationStep(op) for op in problem.ops]
 
-        # initialize job chain
+        # group operation steps with job and machine and initialize job chain
+        self.__job_ops = defaultdict(list)
+        self.__machine_ops = defaultdict(list)
         self.__create_job_chain()
 
         # operations in topological order: available for disjunctive graph model only
@@ -28,10 +30,25 @@ class JSSolution:
     
 
     @property
-    def ops(self): return self.__ops
+    def ops(self) -> list: 
+        '''All operation steps in job related order: 
+        [job0_op0, job0_op1, ..., job1_op0, job1_op1, ...]'''
+        return self.__ops
 
     @property
-    def sorted_ops(self): return self.__sorted_ops
+    def job_ops(self): 
+        '''Operation steps grouped by job: {job: [op0, op1, op2, ...]}.'''
+        return self.__job_ops
+
+    @property
+    def machine_ops(self): 
+        '''Operation steps grouped by machine: {machine: [op0, op5, op8, ...]}.'''
+        return self.__machine_ops
+
+    @property
+    def sorted_ops(self): 
+        '''Topological order of the operation steps. Only available for disjunctive graph model.'''
+        return self.__sorted_ops
 
     @property
     def makespan(self) -> float:
@@ -49,24 +66,16 @@ class JSSolution:
         # otherwise check the start time further directly
         if self.__sorted_ops: return True
 
-        # validate job chain
-        job_chains = defaultdict(list)
-        for op in self.__ops:
-            job_chains[op.source.job].append(op)
-        
-        for job, ops in job_chains.items():
+        # validate job chain        
+        for job, ops in self.__job_ops.items():
             ops.sort(key=lambda op: op.id) # sort in job sequence, i.e. default id order
             ref = 0
             for op in ops:
                 if op.end_time <= ref: return False
                 ref = op.end_time
         
-        # validate machine chain
-        machine_chains = defaultdict(list)
-        for op in self.__ops:
-            machine_chains[op.source.machine].append(op)
-        
-        for machine, ops in machine_chains.items():
+        # validate machine chain        
+        for machine, ops in self.__machine_ops.items():
             ops.sort(key=lambda op: op.start_time) # sort by start time
             ref = 0
             for op in ops:
@@ -133,10 +142,10 @@ class JSSolution:
 
     def __create_job_chain(self):
         '''Initialize job chain based on the sequence of operations.'''
-        # group operations with job
-        job_chains = defaultdict(list)
+        # group operations with job and machine, respectively
         for op in self.__ops:
-            job_chains[op.source.job].append(op)
+            self.__job_ops[op.source.job].append(op)
+            self.__machine_ops[op.source.machine].append(op)
         
         # create chain for operations of each job
         def create_chain(ops:list):
@@ -144,7 +153,7 @@ class JSSolution:
             for op in ops:
                 op.pre_job_op = pre
                 pre = op
-        for job, ops in job_chains.items():
+        for job, ops in self.__job_ops.items():
             create_chain(ops)
 
  
