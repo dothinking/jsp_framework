@@ -29,7 +29,11 @@ class JSSolver:
         if self.__running:
             raise JSPException("There's already a solving process is running.")
         else:
-            self.__running = True        
+            self.__running = True
+        
+        # call user function when better solution is found
+        if callback:
+            problem.register_solution_callback(callback=callback)
         
         # solve problem in child thread
         thread = Thread(target=self.__solving_thread, args=(problem,))
@@ -39,10 +43,6 @@ class JSSolver:
         if interval:
             problem.dynamic_gantt(interval=interval)
             plt.show()
-        
-        # call user function when better solution is found
-        if callback:
-            problem.register_solution_callback(callback=callback)
 
 
     def do_solve(self, problem:JSProblem):

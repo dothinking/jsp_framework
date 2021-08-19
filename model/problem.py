@@ -157,7 +157,7 @@ class JSProblem:
                 filename = instance['path']
                 if instance['optimum']:
                     self.__optimum = instance['optimum']
-                else:
+                elif instance['bounds']:
                     self.__optimum = (instance['bounds']['lower'], instance['bounds']['upper'])
                 break
         else:
