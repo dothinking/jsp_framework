@@ -67,8 +67,9 @@ class OperationStep(Base, JobStep, MachineStep):
         # the source operation
         self.__source = op
 
-        # shadow variable: the start time determined by operation sequence
-        self.__start_time = 0.0
+        # final variable in mathmestical model, while shadow variable in disjunctive graph 
+        # model, i.e. the start time is determined by operation sequence
+        self.start_time = 0.0
     
 
     def __repr__(self) -> str:
@@ -78,15 +79,14 @@ class OperationStep(Base, JobStep, MachineStep):
     def source(self): return self.__source
 
     @property
-    def start_time(self) -> float: return self.__start_time
-
-    @property
-    def end_time(self) -> float: return self.__start_time + self.__source.duration
+    def end_time(self) -> float: return self.start_time + self.__source.duration
 
 
     def update_start_time(self):
-        '''Update start time: the late start time in job chain and machine chain.'''
-        self.__start_time = max(self.__job_chain_start_time(), self.__machine_chain_start_time())
+        '''Update start time: the late start time in job chain and machine chain.
+        NOTE: this method is available for disjunctive graph model only.
+        '''
+        self.start_time = max(self.__job_chain_start_time(), self.__machine_chain_start_time())
     
 
     def copy(self):

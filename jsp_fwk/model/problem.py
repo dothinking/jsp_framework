@@ -28,8 +28,9 @@ class JSProblem:
             input_file (str, optional): User defined data file path. 
         '''
         # solution
-        self.__solution = None      # to solve  
-        self.__optimum = None     # benchmark value
+        self.__solution = None          # to solve  
+        self.__optimum = None           # benchmark value
+        self.__solution_callback = None   # callback when a better solution is found
 
         # dynamic Gantt chart
         self.__gantt_animation = None
@@ -72,21 +73,30 @@ class JSProblem:
     def solution(self): return self.__solution
 
 
+    def register_solution_callback(self, callback):
+        '''Register solution callback called when a better solution is found.'''
+        self.__solution_callback = callback
+
+
     def update_solution(self, solution):
         '''Set a better solution.
 
         Args:
-            solution (JSSolution): A better solution.
+            solution (JSSolution): A better solution. 
         '''
+        # update solution and run user defined function
         self.__solution = solution
+        if self.__solution_callback: self.__solution_callback(solution)
+
+        # signal to update gantt chart
         self.__need_update_chart = True
 
 
-    def dynamic_gantt(self, callback=None, interval:int=2000):
+    def dynamic_gantt(self, interval:int=2000):
         '''Initialize empty Gantt chart with `matplotlib` and update it dynamically.
 
         Args:
-            callback (function, optional): User defined function taking JSSolution as input. 
+            
             interval (int, optional): Refresh interval (in ms). Defaults to 2000 ms.
         '''
         # two subplots
@@ -100,7 +110,7 @@ class JSProblem:
         # axes style        
         gnt_job.set(ylabel='Job', \
             yticks=range(len(self.__jobs)), \
-            yticklabels=[f'Job-{job.id}' for job in self.__jobs])
+            yticklabels=[f'J-{job.id}' for job in self.__jobs])
         gnt_job.grid(which='major', axis='x', linestyle='--')
         
         gnt_machine.set(xlabel='Time', ylabel='Machine',\
@@ -110,22 +120,19 @@ class JSProblem:
 
         # animation
         self.__gantt_animation = FuncAnimation(fig, \
-            func=lambda i: self.__update_gantt_chart(axes=(gnt_job, gnt_machine), callback=callback), \
+            func=lambda i: self.__update_gantt_chart(axes=(gnt_job, gnt_machine)), \
             interval=interval, \
             repeat=False)
     
 
-    def __update_gantt_chart(self, axes:tuple, callback=None):
+    def __update_gantt_chart(self, axes:tuple):
         if not self.__need_update_chart: 
             return
         else:
             self.__need_update_chart = False
 
         # update gantt chart
-        self.solution.plot(axes)
-        
-        # run user defined function
-        if callback: callback(self.solution)
+        self.__solution.plot(axes)
 
 
     def __collect_jobs_and_machines(self):
@@ -150,7 +157,7 @@ class JSProblem:
                 filename = instance['path']
                 if instance['optimum']:
                     self.__optimum = instance['optimum']
-                else:
+                elif instance['bounds']:
                     self.__optimum = (instance['bounds']['lower'], instance['bounds']['upper'])
                 break
         else:
