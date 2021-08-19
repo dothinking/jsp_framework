@@ -4,7 +4,7 @@ A framework to implement and test algorithm for Job-Shop schedule problem (JSP).
 
 - Test pre-defined solver
 
-    - [ ] Google OR-Tools
+    - [x] Google OR-Tools Constrain Programming solver
     - [ ] PuLP
     - [ ] Tabu search
     - [ ] Genetic algorithm 
@@ -12,25 +12,32 @@ A framework to implement and test algorithm for Job-Shop schedule problem (JSP).
 - Implement and test your solver efficiently
 
 
-## Test a solver
-
-Load a [benchmark problem]("benchmark/instances.json) and solve it with sample code below. A dynamic Gantt chart is shown during the solving process.
+## Installation
 
 ```python
-from model.problem import JSProblem
-from solver.SampleSolver import SampleSolver
+python setup.py develop
+```
+
+
+## Test a built-in solver
+
+Load a [benchmark problem]("jsp_fwk/benchmark/instances.json) and solve it with sample code below. A dynamic Gantt chart is shown during the solving process by default.
+
+```python
+from jsp_fwk import JSProblem
+from jsp_fwk.solver.GoogleORCPSolver import GoogleORCPSolver
 
 # load benchmark problem
 problem = JSProblem(benchmark='ft10')
 
 # solve problem with user defined solver
-s = SampleSolver(name='sample')
+s = GoogleORCPSolver()
 s.solve(problem=problem)
 ```
 
-## Implement new solver
+## Implement a new solver
 
-Inherit your solver from `JSSolver` and implement method `do_solver()` with the following process:
+To develop your new solver, inherit from `JSSolver` and implement method `do_solver()`. Taking [sample/UserSolver](sample/UserSolver.py) for example, the general steps in `do_solver()`:
 
 - Initialize an empty solution from problem
 
@@ -47,9 +54,7 @@ Inherit your solver from `JSSolver` and implement method `do_solver()` with the 
 
 
 ```python
-from model.solver import JSSolver
-from model.problem import JSProblem
-from model.solution import JSSolution
+from jsp_fwk import (JSProblem, JSSolution, JSSolver)
 
 class UserSolver(JSSolver):
 
@@ -65,7 +70,7 @@ class UserSolver(JSSolver):
         ...
         # solution.evaluate() 
 
-        # (3) Update the solution for problem iteratively        
+        # (3) Update the solution for problem iteratively
         problem.update_solution(solution)
 ```
 

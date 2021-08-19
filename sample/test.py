@@ -1,7 +1,6 @@
 import logging
-from model.problem import JSProblem
-from model.solution import JSSolution
-from solver.GoogleORCPSolver import GoogleORCPSolver
+from jsp_fwk import (JSProblem, JSSolution)
+from jsp_fwk.solver.GoogleORCPSolver import GoogleORCPSolver
 
 # logging
 logging.basicConfig(
@@ -15,7 +14,7 @@ def print_intermediate_solution(solution:JSSolution):
 
 if __name__=='__main__':
 
-    problem = JSProblem(benchmark='ta25')
+    problem = JSProblem(benchmark='ft10')
 
     s = GoogleORCPSolver()
     s.solve(problem=problem, interval=2000, callback=print_intermediate_solution)

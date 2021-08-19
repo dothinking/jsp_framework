@@ -1,9 +1,9 @@
 from collections import (namedtuple, defaultdict)
 from ortools.sat.python import cp_model
-from common.exception import JSPException
-from model.solver import JSSolver
-from model.problem import JSProblem
-from model.solution import JSSolution
+from ..common.exception import JSPException
+from ..model.solver import JSSolver
+from ..model.problem import JSProblem
+from ..model.solution import JSSolution
 
 
 class VarArraySolutionPrinter(cp_model.CpSolverSolutionCallback):

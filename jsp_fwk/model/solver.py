@@ -6,7 +6,7 @@ import traceback
 from threading import Thread
 from matplotlib import pyplot as plt
 from .problem import JSProblem
-from common.exception import JSPException
+from ..common.exception import JSPException
 
 
 class JSSolver:

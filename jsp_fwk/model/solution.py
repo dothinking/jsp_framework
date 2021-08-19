@@ -6,7 +6,7 @@ from collections import defaultdict
 from matplotlib.container import BarContainer
 from .domain import Operation
 from .variable import OperationStep
-from common.graph import DirectedGraph
+from ..common.graph import DirectedGraph
 from .problem import JSProblem
 
 

@@ -1,1 +1,7 @@
 *.pyc
+.vscode/
+
+# building dir
+build/
+dist/
+*egg-info/
