@@ -1,0 +1,2 @@
+class JSPException(Exception):
+    pass
