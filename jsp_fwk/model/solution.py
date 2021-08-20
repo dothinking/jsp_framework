@@ -37,12 +37,12 @@ class JSSolution:
 
     @property
     def job_ops(self): 
-        '''Operation steps grouped by job: {job: [op0, op1, op2, ...]}.'''
+        '''Operation steps grouped by job: {job_step: [op0, op1, op2, ...]}.'''
         return self.__job_ops
 
     @property
     def machine_ops(self): 
-        '''Operation steps grouped by machine: {machine: [op0, op5, op8, ...]}.'''
+        '''Operation steps grouped by machine: {machine_step: [op0, op5, op8, ...]}.'''
         return self.__machine_ops
 
     @property
@@ -56,6 +56,22 @@ class JSSolution:
         Only available when the solution is feasible; otherwise None.
         '''
         return max(map(lambda op: op.end_time, self.__ops)) if self.is_feasible() else None
+    
+
+    def job_head(self, op:OperationStep) -> JobStep:
+        '''The first step in job chain of specified `op`, i.e. the virtual job step.'''
+        for job_step in self.__job_ops:
+            if job_step.source==op.source.job:
+                return job_step
+        return None
+    
+
+    def machine_head(self, op:OperationStep) -> MachineStep:
+        '''The first step in machine chain of specified `op`, i.e. the virtual machine step.'''
+        for machine_step in self.__machine_ops:
+            if machine_step.source==op.source.machine:
+                return machine_step
+        return None
 
 
     def is_feasible(self) -> bool:

@@ -23,8 +23,8 @@ class Step(Base):
 
     @property
     def end_time(self) -> float:
-        '''The time when a step is completed. 
-        For the first job step or machine step, it's 0 by default, i.e. start immediately.
+        '''The time when a step is completed. For the first job step or machine step, 
+        it's 0 by default, i.e. start immediately.
         '''
         return 0.0
 
@@ -39,7 +39,7 @@ class JobStep(Step):
         super().__init__(source=source)
         # pre-defined job chain
         self.__pre_job_op = None    # type: JobStep
-        self.__next_job_op = None   # type: Operation
+        self.__next_job_op = None   # type: OperationStep
     
     @property
     def pre_job_op(self): return self.__pre_job_op
@@ -50,7 +50,7 @@ class JobStep(Step):
     @pre_job_op.setter
     def pre_job_op(self, op):
         self.__pre_job_op = op
-        if hasattr(op, '__next_job_op'): op.__next_job_op = self
+        if hasattr(op, 'next_job_op'): op.__next_job_op = self
 
     
 class MachineStep(Step):
@@ -58,12 +58,13 @@ class MachineStep(Step):
     def __init__(self, source:Base=None) -> None:
         '''An operation step in machine chain.
         
-        NOTE: the machine itself is wrapped as a MachineStep and is the first step in machine chain.
+        NOTE: the machine itself is wrapped as a MachineStep and is the first step 
+        in machine chain.
         '''
         super().__init__(source=source)
         # machine chain to solve
         self.__pre_machine_op = None    # type: MachineStep
-        self.__next_machine_op = None   # type: Operation
+        self.__next_machine_op = None   # type: OperationStep
     
     @property
     def pre_machine_op(self): return self.__pre_machine_op
@@ -74,8 +75,15 @@ class MachineStep(Step):
     @pre_machine_op.setter
     def pre_machine_op(self, op):
         self.__pre_machine_op = op
-        if hasattr(op, '__next_machine_op'): op.__next_machine_op = self
-
+        if hasattr(op, 'next_machine_op'): op.__next_machine_op = self
+    
+    @property
+    def tailed_machine_op(self):
+        '''The last step in current machine chain.'''
+        step = self
+        while True:
+            if step.__next_machine_op is None: return step
+            step = step.__next_machine_op
 
 
 class OperationStep(JobStep, MachineStep):
@@ -97,16 +105,34 @@ class OperationStep(JobStep, MachineStep):
 
         # final variable in mathmestical model, while shadow variable in disjunctive graph 
         # model, i.e. the start time is determined by operation sequence
-        self.start_time = 0.0
+        self.__start_time = 0.0
     
 
     @property
-    def end_time(self) -> float: return self.start_time + self.source.duration
+    def start_time(self) -> float: return self.__start_time
+
+    @property
+    def end_time(self) -> float: return self.__start_time + self.source.duration
 
 
-    def update_start_time(self):
-        '''Update start time: the late start time in job chain and machine chain.
-        NOTE: this method is available for disjunctive graph model only.
+    @property
+    def estimated_start_time(self) -> float:
+        '''Estimate the start time if it's dispatched to the end of current machine chain.'''
+        return max(self.pre_job_op.end_time, self.tailed_machine_op.end_time)
+
+
+    def update_start_time(self, start_time:float=None):
+        '''Set start time directly, or update start time based on operations sequence in disjunctive 
+        graph model. Note the difference to `estimated_start_time`, which is to estimate start time
+        before dispatching to the machine, while this method is run after dispatched to a machine. 
+        
+        Args:
+            start_time (float): The tartget time. Default to None, update start time based on sequence.
         '''
-        machine_chain_end_time = 0.0 if self.pre_machine_op is None else self.pre_machine_op.end_time
-        self.start_time = max(self.pre_job_op.end_time, machine_chain_end_time)
+        if start_time is not None:
+            self.__start_time = start_time
+
+        # dertermine start time by the previous operations in both job chain and machine chain.
+        else:        
+            machine_chain_end_time = 0.0 if self.pre_machine_op is None else self.pre_machine_op.end_time
+            self.__start_time = max(self.pre_job_op.end_time, machine_chain_end_time)

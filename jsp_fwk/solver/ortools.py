@@ -22,7 +22,7 @@ class VarArraySolutionPrinter(cp_model.CpSolverSolutionCallback):
         '''Pass data back to domain class.'''
         # assign OR-Tools solution back to JSPSolution
         for op, var in self.__variables.items():
-            op.start_time = self.Value(var.start)
+            op.update_start_time(self.Value(var.start))
         
         # update solution
         self.__problem.update_solution(self.__solution)
