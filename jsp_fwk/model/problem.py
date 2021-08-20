@@ -7,6 +7,7 @@ import random
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 from .domain import Job, Machine, Operation
+from ..common.exception import JSPException
 
 
 class JSProblem:
@@ -161,7 +162,7 @@ class JSProblem:
                     self.__optimum = (instance['bounds']['lower'], instance['bounds']['upper'])
                 break
         else:
-            raise Exception(f'Cannot find benchmark name: {name}.')
+            raise JSPException(f'Cannot find benchmark name: {name}.')
         
         # load jobs
         return self.__load_from_file(os.path.join(benchmark_path, filename))
@@ -170,7 +171,7 @@ class JSProblem:
     def __load_from_file(self, filename:str) -> list:
         '''Load jobs from formatted data file.'''
         if not os.path.exists(filename):
-            raise Exception(f'Cannot find data file: {filename}.')
+            raise JSPException(f'Cannot find data file: {filename}.')
         
         # load lines and skip comment line starting with #
         with open(filename, 'r') as f:

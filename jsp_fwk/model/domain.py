@@ -6,6 +6,9 @@ class Base:
     def __init__(self, id:int) -> None:
         '''An instance with an ID.'''
         self.id = id
+    
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}({self.id})'
 
 
 class Job(Base):

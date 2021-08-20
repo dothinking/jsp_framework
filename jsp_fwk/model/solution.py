@@ -5,7 +5,7 @@ assigned in each machine, and the deduced start time of each operation according
 from collections import defaultdict
 from matplotlib.container import BarContainer
 from .domain import Operation
-from .variable import OperationStep
+from .variable import (JobStep, MachineStep, OperationStep)
 from ..common.graph import DirectedGraph
 from .problem import JSProblem
 
@@ -143,18 +143,24 @@ class JSSolution:
     def __create_job_chain(self):
         '''Initialize job chain based on the sequence of operations.'''
         # group operations with job and machine, respectively
+        job_ops = defaultdict(list)
+        machine_ops = defaultdict(list)
         for op in self.__ops:
-            self.__job_ops[op.source.job].append(op)
-            self.__machine_ops[op.source.machine].append(op)
+            job_ops[op.source.job].append(op)
+            machine_ops[op.source.machine].append(op)
+        
+        # convert the key form Job/Machine to JobStep/MachineStep
+        self.__job_ops = { JobStep(job) : ops for job, ops in job_ops.items() }
+        self.__machine_ops = { MachineStep(machine) : ops for machine, ops in machine_ops.items() }
         
         # create chain for operations of each job
-        def create_chain(ops:list):
-            pre = None
+        def create_chain(job_step:JobStep, ops:list):
+            pre = job_step
             for op in ops:
                 op.pre_job_op = pre
                 pre = op
-        for job, ops in self.__job_ops.items():
-            create_chain(ops)
+
+        for job, ops in self.__job_ops.items(): create_chain(job, ops)
 
  
     def __update_graph(self):
@@ -166,7 +172,7 @@ class JSSolution:
         graph = DirectedGraph()
         for op in self.__ops:
             # job chain edge
-            if op.pre_job_op is None:
+            if not isinstance(op.pre_job_op, OperationStep): # first real operation step
                 graph.add_edge(source, op)
             
             if op.next_job_op:
