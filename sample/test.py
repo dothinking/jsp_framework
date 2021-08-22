@@ -14,13 +14,35 @@ def print_intermediate_solution(solution:JSSolution):
 
 if __name__=='__main__':
 
+    # ----------------------------------------
+    # create problem from benchmark
+    # ----------------------------------------
+    names = ['ft06', 'la01', 'ft10', 'swv01', 'la38', \
+            'swv05', 'swv12', 'ta31', 'ta42', 'ta54', 'ta70']
     problem = JSProblem(benchmark='ft10')
 
-    # s = GoogleORCPSolver()
+    # ----------------------------------------
+    # test built-in solver
+    # ----------------------------------------
+    # googl or-tools
+    s = GoogleORCPSolver()
 
+    # priority dispatching
     # s = PriorityDispatchSolver(rule='spt')
     # s = PriorityDispatchSolver(rule='mopr')
     # s = PriorityDispatchSolver(rule='mwkr')
-    s = PriorityDispatchProSolver(rule='t')
+    # s = PriorityDispatchSolver(rule='t')
 
-    s.solve(problem=problem, interval=2000, callback=print_intermediate_solution)
+    # ----------------------------------------
+    # solve and result
+    # ----------------------------------------
+    s.solve(problem=problem, interval=None, callback=print_intermediate_solution)
+    s.wait()
+    print('----------------------------------------')
+    if s.status:
+        print(f'Optimum: {problem.optimum}')
+        print(f'Solution: {problem.solution.makespan}')
+        print(f'Terminate successfully in {s.user_time} sec.')
+    else:
+        print(f'Solving process failed in {s.user_time} sec.')
+        

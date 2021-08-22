@@ -14,18 +14,24 @@ class JSSolver:
     def __init__(self) -> None:
         '''Base solver for Job-Shop Schedule Problem.'''
         self.__running = False
+        self.__status = False
+        self.__thread = None
         self.__user_time = time.perf_counter()
 
+    @property
+    def is_running(self): return self.__running
+
+    @property
+    def status(self): return self.__status
 
     @property
     def user_time(self):
         '''Returns the user time in seconds since the creation of the solver.'''
-        return self.__user_time
-    
+        return self.__user_time    
 
-    @property
-    def is_running(self): return self.__running
-    
+    def wait(self):
+        '''Wait the termination of solving process in child thread.'''
+        self.__thread.join()
 
     def solve(self, problem:JSProblem, interval:int=None, callback=None):
         '''Solve problem and update Gantt chart dynamically.
@@ -47,8 +53,8 @@ class JSSolver:
             problem.register_solution_callback(callback=callback)
         
         # solve problem in child thread
-        thread = Thread(target=self.__solving_thread, args=(problem,))
-        thread.start()
+        self.__thread = Thread(target=self.__solving_thread, args=(problem,))
+        self.__thread.start()
 
         # show gantt chart and listen to the solution update in main thread
         if interval:
@@ -86,16 +92,16 @@ class JSSolver:
 
     def __solving_thread(self, problem:JSProblem):
         '''Solve problem in child thread.'''
-        # solve problem
-        good = True
         try:
             self.do_solve(problem=problem)
 
         except JSPException:
-            good = False
+            self.__status = False
             traceback.print_exc()
+        
+        else:
+            self.__status = problem.solution.is_feasible()
             
         finally:
             self.__running = False
             self.__user_time = round(time.perf_counter()-self.__user_time, 1)
-            print(f'{"Terminate successfully" if good else "Solving process failed"} in {self.__user_time} sec.')
