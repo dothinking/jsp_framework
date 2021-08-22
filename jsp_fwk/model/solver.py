@@ -14,6 +14,17 @@ class JSSolver:
     def __init__(self) -> None:
         '''Base solver for Job-Shop Schedule Problem.'''
         self.__running = False
+        self.__user_time = time.perf_counter()
+
+
+    @property
+    def user_time(self):
+        '''Returns the user time in seconds since the creation of the solver.'''
+        return self.__user_time
+    
+
+    @property
+    def is_running(self): return self.__running
     
 
     def solve(self, problem:JSProblem, interval:int=None, callback=None):
@@ -75,15 +86,16 @@ class JSSolver:
 
     def __solving_thread(self, problem:JSProblem):
         '''Solve problem in child thread.'''
-        t0 = time.time()
         # solve problem
+        good = True
         try:
             self.do_solve(problem=problem)
+
         except JSPException:
+            good = False
             traceback.print_exc()
-            print('Solving process failed.')
-        else:
-            print(f'Terminate successfully in {round(time.time()-t0, 1)} sec.')
+            
         finally:
-            # terminate normally
             self.__running = False
+            self.__user_time = round(time.perf_counter()-self.__user_time, 1)
+            print(f'{"Terminate successfully" if good else "Solving process failed"} in {self.__user_time} sec.')
