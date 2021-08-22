@@ -115,12 +115,6 @@ class OperationStep(JobStep, MachineStep):
     def end_time(self) -> float: return self.__start_time + self.source.duration
 
 
-    @property
-    def estimated_start_time(self) -> float:
-        '''Estimate the start time if it's dispatched to the end of current machine chain.'''
-        return max(self.pre_job_op.end_time, self.tailed_machine_op.end_time)
-
-
     def update_start_time(self, start_time:float=None):
         '''Set start time directly, or update start time based on operations sequence in disjunctive 
         graph model. Note the difference to `estimated_start_time`, which is to estimate start time
@@ -132,7 +126,7 @@ class OperationStep(JobStep, MachineStep):
         if start_time is not None:
             self.__start_time = start_time
 
-        # dertermine start time by the previous operations in both job chain and machine chain.
-        else:        
-            machine_chain_end_time = 0.0 if self.pre_machine_op is None else self.pre_machine_op.end_time
-            self.__start_time = max(self.pre_job_op.end_time, machine_chain_end_time)
+        # if dispatched, dertermine start time by the previous operations in both job chain and 
+        # machine chain. Otherwise, use the default start time
+        elif self.pre_machine_op:        
+            self.__start_time = max(self.pre_job_op.end_time, self.pre_machine_op.end_time)

@@ -6,6 +6,7 @@ A framework to implement and test algorithm for Job-Shop schedule problem (JSP).
 
     - [x] Google OR-Tools Constrain Programming solver
     - [ ] PuLP
+    - [x] Priority dispatching
     - [ ] Tabu search
     - [ ] Genetic algorithm 
 
@@ -25,7 +26,7 @@ Load a [benchmark problem]("jsp_fwk/benchmark/instances.json) and solve it with 
 
 ```python
 from jsp_fwk import JSProblem
-from jsp_fwk.solver.GoogleORCPSolver import GoogleORCPSolver
+from jsp_fwk.solver import GoogleORCPSolver
 
 # load benchmark problem
 problem = JSProblem(benchmark='ft10')

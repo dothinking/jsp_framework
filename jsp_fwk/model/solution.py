@@ -55,10 +55,18 @@ class JSSolution:
         '''Makespan of current solution. 
         Only available when the solution is feasible; otherwise None.
         '''
-        return max(map(lambda op: op.end_time, self.__ops)) if self.is_feasible() else None
+        return max(map(lambda op: op.end_time, self.__ops))
     
 
-    def job_head(self, op:OperationStep) -> JobStep:
+    def find(self, source_op:Operation):
+        '''Find the associated step with source operation.'''
+        for op in self.__ops:
+            if op.source==source_op:
+                return op
+        return None
+        
+
+    def job_head(self, op:OperationStep):
         '''The first step in job chain of specified `op`, i.e. the virtual job step.'''
         for job_step in self.__job_ops:
             if job_step.source==op.source.job:
@@ -66,12 +74,63 @@ class JSSolution:
         return None
     
 
-    def machine_head(self, op:OperationStep) -> MachineStep:
+    def machine_head(self, op:OperationStep):
         '''The first step in machine chain of specified `op`, i.e. the virtual machine step.'''
         for machine_step in self.__machine_ops:
             if machine_step.source==op.source.machine:
                 return machine_step
         return None
+
+    @property
+    def imminent_ops(self):
+        '''Collect imminent operations in the processing queue.'''
+        head_ops = []
+        for job_step in self.__job_ops:
+            op = job_step.next_job_op
+            while op and op.pre_machine_op:
+                op = op.next_job_op
+            if op: head_ops.append(op)
+        return head_ops
+
+    
+    def copy(self):
+        '''Hard copy of current solution.'''
+        # copy step instances and job chain
+        ops = [op.source for op in self.__ops]
+        solution = JSSolution(problem=JSProblem(ops=ops))
+
+        # copy machine chain
+        def map_source_to_step(solution):
+            '''map source instance to step instance'''
+            step_map = {}
+            for machine_step, ops in solution.machine_ops.items():
+                step_map[machine_step.source] = machine_step
+                for op_step in ops:
+                    step_map[op_step.source] = op_step
+            return step_map
+        step_map = map_source_to_step(solution)
+
+        for op, new_op in zip(self.__ops, solution.ops):
+            if not op.pre_machine_op: continue
+            new_op.pre_machine_op = step_map[op.pre_machine_op.source]
+        
+        # update
+        solution.evaluate()
+
+        return solution
+
+
+    def estimated_start_time(self, op:OperationStep) -> float:
+        '''Estimate the start time if it's dispatched to the end of current machine chain.'''
+        machine_op = self.machine_head(op).tailed_machine_op
+        return max(op.pre_job_op.end_time, machine_op.end_time)
+
+
+    def dispatch(self, op:OperationStep):
+        '''Dispatch the operation step to the associated machine.'''
+        pre_machine_op = self.machine_head(op).tailed_machine_op
+        op.pre_machine_op = pre_machine_op
+        self.evaluate(op=op) # update start time accordingly
 
 
     def is_feasible(self) -> bool:
@@ -101,14 +160,14 @@ class JSSolution:
         return True
 
 
-    def evaluate(self, op:Operation=None) -> bool:
+    def evaluate(self, op:OperationStep=None) -> bool:
         '''Evaluate specified and succeeding operations of current solution, especially 
         work time. Generally the machine chain was changed before calling this method.
 
         NOTE: this method is only available for disjunctive graph model.
 
         Args:
-            op (Operation, optional): The operation step to update. Defaults to None,
+            op (OperationStep, optional): The operation step to update. Defaults to None,
                 i.e. the first operation.
         
         Returns:
@@ -122,8 +181,8 @@ class JSSolution:
         pos = 0 if op is None else self.__sorted_ops.index(op)
         
         # update process by the topological order
-        for i in range(pos, len(self.__sorted_ops)):
-            self.__sorted_ops[i].update_start_time()
+        for op in self.__sorted_ops[pos:]:
+            op.update_start_time()
         
         return True
 
@@ -176,9 +235,9 @@ class JSSolution:
                 op.pre_job_op = pre
                 pre = op
 
-        for job, ops in self.__job_ops.items(): create_chain(job, ops)
+        for job, ops in self.__job_ops.items(): create_chain(job, ops)    
 
- 
+
     def __update_graph(self):
         '''Update the associated directed graph and the topological order accordingly.'''
         # add the dummy source and sink node

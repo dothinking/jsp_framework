@@ -56,11 +56,11 @@ class PriorityDispatchSolver(JSSolver):
         Args:
             rule (str, optional): Pre-defined rule name. Defaults to None.
             fun_rule (function, optional): User defined function for dispatching rule. It takes
-            an OperationStep instance as input, and returns a tuple representing the priority. 
-            The lower value, the higher priority.
+            an OperationStep instance and associated JSSolution instance as inputs, and returns 
+            a tuple representing the priority. The lower value, the higher priority.
 
             ```python
-            def fun_rule(op:OperationStep) -> tuple
+            def fun_rule(op:OperationStep, solution:JSSolution) -> tuple
             ```
         '''        
         super().__init__()
@@ -75,45 +75,69 @@ class PriorityDispatchSolver(JSSolver):
 
     def do_solve(self, problem: JSProblem):
         solution = JSSolution(problem=problem)
+        self.solving_iteration(solution=solution)
+        problem.update_solution(solution=solution)
+    
 
+    def solving_iteration(self, solution:JSSolution):
+        '''One iteration applying priority dispatching rule.'''
+        # move form
         # collect imminent operations in the processing queue
-        head_ops = [job_step.next_job_op for job_step in solution.job_ops]
+        head_ops = solution.imminent_ops
 
         # dispatch operation by priority
-        i = 1
         while head_ops:
             # sort by priority            
-            head_ops.sort(key=self.__dispatching_rule)
+            head_ops.sort(key=lambda op: self.__dispatching_rule(op, solution))
 
             # dispatch operation with the first priority
             op = head_ops[0]
-            pre_machine_op = solution.machine_head(op).tailed_machine_op
-            op.pre_machine_op = pre_machine_op
-            solution.evaluate() # update start time accordingly
-
-            # update gantt chart
-            if i % 20 == 0: 
-                problem.update_solution(solution=solution)
+            solution.dispatch(op)
             
             # next loop
-            i += 1
             next_job_op = op.next_job_op
             if next_job_op is None:
                 head_ops = head_ops[1:]
             else:
                 head_ops[0] = next_job_op
-        
-        # final result
-        solution.evaluate()
-        problem.update_solution(solution=solution)
-    
 
 
 class PriorityDispatchProSolver(PriorityDispatchSolver):
     '''Improved version of Priority Dispatching Solver with one step estimation.'''
 
     def do_solve(self, problem: JSProblem):
-        pass
+        # collect imminent operations in the processing queue
+        solution = JSSolution(problem=problem)
+        head_ops = solution.imminent_ops
+
+        # dispatch operation by priority
+        while head_ops:
+            # estimate every choice at current stage
+            makespans = []
+            for op in head_ops:
+                # new solution with a step forword
+                _solution = solution.copy()
+                _solution.dispatch(_solution.find(source_op=op.source))
+
+                # solving with dispatching rule
+                self.solving_iteration(_solution)
+                makespans.append(_solution.makespan)
+            
+            # choice the best
+            pos = makespans.index(min(makespans))
+            op = head_ops[pos]
+            solution.dispatch(op)
+            problem.update_solution(solution=solution)
+            
+            # next loop
+            next_job_op = op.next_job_op
+            if next_job_op is None:
+                head_ops = head_ops[0:pos] + head_ops[pos+1:]
+            else:
+                head_ops[pos] = next_job_op
+
+        # final result
+        problem.update_solution(solution=solution)
 
 
 
@@ -128,13 +152,13 @@ class DisPatchingRules:
         return fun_rule.__func__
 
     @staticmethod
-    def SPT(op:OperationStep):
+    def SPT(op:OperationStep, solution:JSSolution):
         '''Dispatching rules: Shortest Processing Time.'''
         return op.source.duration
 
 
     @staticmethod
-    def MOPR(op:OperationStep):
+    def MOPR(op:OperationStep, solution:JSSolution):
         '''Dispatching rule: Most Operations Remaining.'''
         num = 0
         next_job_op = op.next_job_op
@@ -145,7 +169,7 @@ class DisPatchingRules:
 
 
     @staticmethod
-    def MWKR(op:OperationStep):
+    def MWKR(op:OperationStep, solution:JSSolution):
         '''Dispatching rule: Most Work Remaining.'''
         num = 0
         ref = op
@@ -156,7 +180,7 @@ class DisPatchingRules:
 
 
     @staticmethod
-    def T(op:OperationStep):
+    def T(op:OperationStep, solution:JSSolution):
         '''Dispatching rule: 黄志. 作业车间调度问题的一种启发式算法.'''
-        remaining = -DisPatchingRules.MWKR(op) - 1.5*op.source.duration
-        return op.estimated_start_time, -remaining
+        remaining = -DisPatchingRules.MWKR(op, solution) - 1.5*op.source.duration
+        return solution.estimated_start_time(op), -remaining
