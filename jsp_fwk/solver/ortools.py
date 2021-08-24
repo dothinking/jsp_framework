@@ -31,13 +31,14 @@ class VarArraySolutionPrinter(cp_model.CpSolverSolutionCallback):
 
 class GoogleORCPSolver(JSSolver):
 
-    def __init__(self, max_time:int=None) -> None:
+    def __init__(self, name:str=None, max_time:int=None) -> None:
         '''Solve JSP with Google OR-Tools.
 
         Args:
+            name (str, optional): Solver name.
             max_time (int, optional): Max solving time in seconds. Defaults to None, i.e. no limit.
         '''        
-        super().__init__()
+        super().__init__(name)
         self.__max_time = max_time
 
 

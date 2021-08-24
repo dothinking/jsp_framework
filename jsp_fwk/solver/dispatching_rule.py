@@ -50,10 +50,11 @@ from ..model.solution import JSSolution
 class PriorityDispatchSolver(JSSolver):
     '''General Priority Dispatching Solver.'''
     
-    def __init__(self, rule:str=None, fun_rule=None) -> None:
+    def __init__(self, name:str=None, rule:str=None, fun_rule=None) -> None:
         '''Dispatching operation with priority defined by pre-defined or user rule.
 
         Args:
+            name (str, optional): Solver name.
             rule (str, optional): Pre-defined rule name. Defaults to None.
             fun_rule (function, optional): User defined function for dispatching rule. It takes
             an OperationStep instance and associated JSSolution instance as inputs, and returns 
@@ -63,7 +64,7 @@ class PriorityDispatchSolver(JSSolver):
             def fun_rule(op:OperationStep, solution:JSSolution) -> tuple
             ```
         '''        
-        super().__init__()
+        super().__init__(name)
 
         if rule:
             self.__dispatching_rule = DisPatchingRules.get(rule.upper())

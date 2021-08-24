@@ -36,4 +36,5 @@ if __name__=='__main__':
     problem = JSProblem(benchmark='ft10')
 
     s = UserSolver()
-    s.solve(problem=problem, interval=2000)
+    s.solve(problem=problem, interval=2000, \
+        callback=lambda solution: print(f'makespan: {solution.makespan}'))

@@ -4,13 +4,13 @@ assigned in each machine, and the deduced start time of each operation according
 
 from collections import defaultdict
 from matplotlib.container import BarContainer
-from .domain import Operation
+from .domain import (Operation,Cloneable)
 from .variable import (JobStep, MachineStep, OperationStep)
 from ..common.graph import DirectedGraph
 from .problem import JSProblem
 
 
-class JSSolution:
+class JSSolution(Cloneable):
 
     def __init__(self, problem:JSProblem) -> None:
         '''Initialize solution by copying all operations from `problem`.
@@ -94,7 +94,7 @@ class JSSolution:
 
     
     def copy(self):
-        '''Hard copy of current solution.'''
+        '''Hard copy of current solution. Override `Cloneable.copy()`.'''
         # copy step instances and job chain
         ops = [op.source for op in self.__ops]
         solution = JSSolution(problem=JSProblem(ops=ops))

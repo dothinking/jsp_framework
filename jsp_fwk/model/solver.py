@@ -3,16 +3,22 @@
 
 import time
 import traceback
-from threading import Thread
+from threading import (Thread, currentThread)
 from matplotlib import pyplot as plt
 from .problem import JSProblem
+from .domain import Cloneable
 from ..common.exception import JSPException
 
 
-class JSSolver:
+class JSSolver(Cloneable):
 
-    def __init__(self) -> None:
-        '''Base solver for Job-Shop Schedule Problem.'''
+    def __init__(self, name:str=None) -> None:
+        '''Base solver for Job-Shop Schedule Problem.
+
+        Args:
+            name (str, optional): Solver name. Default to None, i.e. class name.
+        '''
+        self.name = name or self.__class__.__name__
         self.__running = False
         self.__status = False
         self.__thread = None
@@ -32,6 +38,7 @@ class JSSolver:
     def wait(self):
         '''Wait the termination of solving process in child thread.'''
         self.__thread.join()
+    
 
     def solve(self, problem:JSProblem, interval:int=None, callback=None):
         '''Solve problem and update Gantt chart dynamically.
@@ -53,7 +60,8 @@ class JSSolver:
             problem.register_solution_callback(callback=callback)
         
         # solve problem in child thread
-        self.__thread = Thread(target=self.__solving_thread, args=(problem,))
+        self.__thread = Thread(target=self.__solving_thread, args=(problem,), \
+                                name=f'{currentThread().name}_{self.name}')
         self.__thread.start()
 
         # show gantt chart and listen to the solution update in main thread

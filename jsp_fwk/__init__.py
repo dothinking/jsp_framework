@@ -8,3 +8,6 @@ from .model.variable import (JobStep, MachineStep, OperationStep)
 from .model.problem import JSProblem
 from .model.solution import JSSolution
 from .model.solver import JSSolver
+
+# benchmark
+from .model.benchmark import BenchMark
