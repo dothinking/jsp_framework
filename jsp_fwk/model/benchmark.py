@@ -91,7 +91,7 @@ class BenchMark:
         table = PrettyTable()
 
         # title
-        table.field_names(['ID', 'Problem','Solver','Scale','Optimum', 'Solution', 'Error %', 'Time'])
+        table.field_names = ['ID', 'Problem','Solver','Scale','Optimum', 'Solution', 'Error %', 'Time']
 
         # data
         for line in self.summary_list(): table.add_row(line)
@@ -106,7 +106,7 @@ class BenchMark:
 
             # start solving
             if show_info:
-                logging.info(f'Start solving Problem {problem.name} with Solver {solver.name}...')
+                logging.info(f'Start solving "{problem.name}" with "{solver.name}"...')
             solver.solve(problem=problem, interval=None, callback=callback) # don't show gantt chart
             solver.wait() # wait for termination
 
@@ -114,7 +114,7 @@ class BenchMark:
             self.__solved_cases.append((i, problem, solver))
             self.__solving_queue.task_done()
             if show_info:
-                logging.info(f'{"Successfully" if solver.status else "Failed"} to solve Problem {problem.name} with Solver {solver.name} in {solver.user_time} sec.')
+                logging.info(f'{"Successfully" if solver.status else "Failed"} to solve "{problem.name}" with "{solver.name}" in {solver.user_time} sec.')
     
 
     

@@ -26,9 +26,10 @@ if __name__=='__main__':
     # s = PriorityDispatchSolver(rule='spt')
     # s = PriorityDispatchSolver(rule='mopr')
     # s = PriorityDispatchSolver(rule='mwkr')
-    s1 = PriorityDispatchSolver(rule='t')
+    s1 = PriorityDispatchSolver(rule='c', name='rule-c')
+    s2 = PriorityDispatchSolver(rule='t', name='rule-t')
 
-    solvers = [s,s1]
+    solvers = [s1,s2]
 
     # ----------------------------------------
     # solve and result

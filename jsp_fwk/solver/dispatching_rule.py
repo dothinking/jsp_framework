@@ -39,6 +39,8 @@ number of machines is 10 and number of jobs are (10, 30, and 100) and Most Work 
 the efficient method when the number of machines is 20 and number of jobs are (10, 30, and 100).
 '''
 
+import threading
+from queue import Queue
 from ..common.exception import JSPException
 from ..model.variable import OperationStep
 from ..model.solver import JSSolver
@@ -114,19 +116,22 @@ class PriorityDispatchProSolver(PriorityDispatchSolver):
         # dispatch operation by priority
         while head_ops:
             # estimate every choice at current stage
-            makespans = []
-            for op in head_ops:
-                # new solution with a step forword
-                _solution = solution.copy()
-                _solution.dispatch(_solution.find(source_op=op.source))
+            makespans = [] # a list of (makespan, op)
+            solution_queue = Queue(maxsize=len(head_ops))
+            for op in head_ops: solution_queue.put((solution.copy(), op))            
+            for i in range(len(head_ops)):
+                thread = threading.Thread(target=self.__move, args=(solution_queue, makespans))
+                thread.setDaemon(True)
+                thread.start()
+            
+            solution_queue.join() # wait for termination
 
-                # solving with dispatching rule
-                self.solving_iteration(_solution)
-                makespans.append(_solution.makespan)
+            # sort makespan
+            makespans.sort(key=lambda case: case[0])
             
             # choice the best
-            pos = makespans.index(min(makespans))
-            op = head_ops[pos]
+            op = makespans[0][1]
+            pos = head_ops.index(op)            
             solution.dispatch(op)
             problem.update_solution(solution=solution)
             
@@ -139,6 +144,16 @@ class PriorityDispatchProSolver(PriorityDispatchSolver):
 
         # final result
         problem.update_solution(solution=solution)
+    
+
+    def __move(self, queue:Queue, res:list):
+        '''Evaluate each move in child thread.'''
+        while True:
+            solution, op = queue.get()
+            solution.dispatch(solution.find(source_op=op.source))
+            self.solving_iteration(solution)
+            res.append((solution.makespan, op))
+            queue.task_done()
 
 
 
@@ -185,3 +200,12 @@ class DisPatchingRules:
         '''Dispatching rule: 黄志. 作业车间调度问题的一种启发式算法.'''
         remaining = -DisPatchingRules.MWKR(op, solution) - 1.5*op.source.duration
         return solution.estimated_start_time(op), -remaining
+    
+
+    @staticmethod
+    def C(op:OperationStep, solution:JSSolution):
+        '''Dispatching rule: potential complete time first.'''
+        remaining = -DisPatchingRules.MWKR(op, solution) - 1.5*op.source.duration
+        machine_op = solution.machine_head(op).tailed_machine_op
+        est_start_time = solution.estimated_start_time(op)
+        return est_start_time+op.source.duration, int(est_start_time-machine_op.end_time>op.source.duration*0.2), -remaining
