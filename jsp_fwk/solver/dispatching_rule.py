@@ -7,40 +7,28 @@ scheduled at the machine.
 A dispatching rule might be one of the basic dispatching rules below, or a combination of 
 several of them.
 
-- Shortest Processing Time (SPT): Prefer the operation with the shortest processing time.
-- Longest Processing Time (LPT): Prefer the operation with the longest processing time.
-- Shortest Job First (SJF): Prefer the operation of which the job possesses the shortest 
-  total processing time.
-- Longest Job First (LJF): Prefer the operation of which the job possesses the longest 
-  total processing time.
-- Least Work Remaining (LWKR): Prefer the operation for which the sum of the operation 
-  length and successor operations' lengths is the least.
-- Most Work Remaining (MWKR): Prefer the operation for which the sum of the operation 
-  length and successor operations' lengths is the most.
-- Most Operations Remaining (MOPR): the preferred operation of part with the largest number 
-  still unrealized operations.
-- Relative Least Work Remaining (RLWKR): As LWKR but normalized by total job length.
-- Relative Most Work Remaining (RMWKR): As MWKR but normalized by total job length.
-- Shortest Waiting Time (SWT): Prefer the operation that was enqueued as the last.
-- Longest Waiting Time (LWT): Prefer the operation that was enqueued as the first.
-- Urgency Next (UN): Prefer the operation of which the successor operation's machine becomes 
-  idle as the first (based on the current queues).
-- Urgency Any (UA): Prefer the operation of which one of the successor operation's machine 
-  becomes idle as the first (based on the current queues).
-- First In First Out (FIFO): The job which arrives first enters service first.
-- Last Come First Served (LCFS): Jobs are processed in the order of last to first in which they 
-arrive at the machine.
+Kaban, A. et al. “Comparison of dispatching rules in job-shop scheduling problem using simulation: 
+a case study.” International Journal of Simulation Modelling 11 (2012): 129-140.
 
-Study [DOI: 10.5281/zenodo.1422477] shows that:
+No. Rules   Description                     Type 
+----------------------------------------------------
+1   FIFO    First In First Out              Static 
+2   LIFO    Last In First Out               Static 
+3   SPT     Shortest Processing Time        Static 
+4   LPT     Longest Processing Time         Static 
+5   SPS     Shortest Process Sequence       Static 
+6   LPS     Longest Process Sequence        Static 
+7   STPT    Shortest Total Processing Time  Static 
+8   LTPT    Longest Total Processing Time   Static 
+9   ECT     Earliest Creation Time          Dynamic 
+10  LCT     Longest Creation Time           Dynamic 
+11  SWT     Shortest Waiting Time           Dynamic 
+12  LWT     Longest Waiting Time            Dynamic 
+13  LTWR    Least Total Work Remaining      Dynamic 
+14  MTWR    Most Total Work Remaining       Dynamic 
 
-Shortest Processing Time (SPT) is the efficient method when the number of machines is 2 and number 
-of jobs are (10, 30, and 100), Most Operations Remaining (MOPR) is the efficient method when the 
-number of machines is 10 and number of jobs are (10, 30, and 100) and Most Work Remaining (MWKR) is 
-the efficient method when the number of machines is 20 and number of jobs are (10, 30, and 100).
 '''
 
-import threading
-from queue import Queue
 from ..common.exception import JSPException
 from ..model.variable import OperationStep
 from ..model.solver import JSSolver
@@ -105,107 +93,111 @@ class PriorityDispatchSolver(JSSolver):
                 head_ops[0] = next_job_op
 
 
-class PriorityDispatchProSolver(PriorityDispatchSolver):
-    '''Improved version of Priority Dispatching Solver with one step estimation.'''
-
-    def do_solve(self, problem: JSProblem):
-        # collect imminent operations in the processing queue
-        solution = JSSolution(problem=problem)
-        head_ops = solution.imminent_ops
-
-        # dispatch operation by priority
-        while head_ops:
-            # estimate every choice at current stage
-            makespans = [] # a list of (makespan, op)
-            solution_queue = Queue(maxsize=len(head_ops))
-            for op in head_ops: solution_queue.put((solution.copy(), op))            
-            for i in range(len(head_ops)):
-                thread = threading.Thread(target=self.__move, args=(solution_queue, makespans))
-                thread.setDaemon(True)
-                thread.start()
-            
-            solution_queue.join() # wait for termination
-
-            # sort makespan
-            makespans.sort(key=lambda case: case[0])
-            
-            # choice the best
-            op = makespans[0][1]
-            pos = head_ops.index(op)            
-            solution.dispatch(op)
-            problem.update_solution(solution=solution)
-            
-            # next loop
-            next_job_op = op.next_job_op
-            if next_job_op is None:
-                head_ops = head_ops[0:pos] + head_ops[pos+1:]
-            else:
-                head_ops[pos] = next_job_op
-
-        # final result
-        problem.update_solution(solution=solution)
-    
-
-    def __move(self, queue:Queue, res:list):
-        '''Evaluate each move in child thread.'''
-        while True:
-            solution, op = queue.get()
-            solution.dispatch(solution.find(source_op=op.source))
-            self.solving_iteration(solution)
-            res.append((solution.makespan, op))
-            queue.task_done()
-
-
-
 class DisPatchingRules:
 
     @classmethod
-    def get(cls, name:str='t'):
+    def get(cls, name:str):
         '''Get rule method by name.'''
         fun_rule = cls.__dict__.get(name, None)
         if not fun_rule:
             raise JSPException('Invalid rule name.')
         return fun_rule.__func__
 
+
     @staticmethod
     def SPT(op:OperationStep, solution:JSSolution):
-        '''Dispatching rules: Shortest Processing Time.'''
+        '''Shortest Processing Time.'''
         return op.source.duration
 
+    @staticmethod
+    def LPT(op:OperationStep, solution:JSSolution):
+        '''Longest Processing Time.'''
+        return -DisPatchingRules.SPT(op, solution)
+    
 
     @staticmethod
-    def MOPR(op:OperationStep, solution:JSSolution):
-        '''Dispatching rule: Most Operations Remaining.'''
-        num = 0
-        next_job_op = op.next_job_op
-        while next_job_op:
-            num += 1
-            next_job_op = next_job_op.next_job_op
-        return -num
-
+    def SPS(op:OperationStep, solution:JSSolution):
+        '''Shortest Process Sequence.'''
+        job = solution.job_head(op)
+        return len(solution.job_ops[job])    
 
     @staticmethod
-    def MWKR(op:OperationStep, solution:JSSolution):
-        '''Dispatching rule: Most Work Remaining.'''
+    def LPS(op:OperationStep, solution:JSSolution):
+        '''Longest Process Sequence.'''
+        return -DisPatchingRules.SPS(op, solution)
+
+    
+    @staticmethod
+    def STPT(op:OperationStep, solution:JSSolution):
+        '''Shortest Total Processing Time.'''
+        job = solution.job_head(op)
+        return sum(op.source.duration for op in solution.job_ops[job])
+    
+    @staticmethod
+    def LTPT(op:OperationStep, solution:JSSolution):
+        '''Longest Total Processing Time.'''
+        return -DisPatchingRules.STPT(op, solution)
+    
+
+    @staticmethod
+    def ECT(op:OperationStep, solution:JSSolution):
+        '''Earliest Creation Time.'''
+        return op.pre_job_op.end_time
+    
+    @staticmethod
+    def LCT(op:OperationStep, solution:JSSolution):
+        '''Longest Creation Time.'''
+        return -DisPatchingRules.ECT(op, solution)
+    
+
+    @staticmethod
+    def SWT(op:OperationStep, solution:JSSolution):
+        '''Shortest Waiting Time.'''
+        arrive_time = op.pre_job_op.end_time
+        machine_time = solution.machine_head(op).tailed_machine_op.end_time
+        return max(machine_time-arrive_time, 0)
+    
+    @staticmethod
+    def LWT(op:OperationStep, solution:JSSolution):
+        '''Longest waiting Time.'''
+        return -DisPatchingRules.SWT(op, solution)
+
+    @staticmethod
+    def LTWR(op:OperationStep, solution:JSSolution):
+        '''Least Total Work Remaining.'''
         num = 0
         ref = op
         while ref:
             num += ref.source.duration
             ref = ref.next_job_op
-        return -num
+        return num
+
+    @staticmethod
+    def MTWR(op:OperationStep, solution:JSSolution):
+        '''Most Total Work Remaining.'''
+        return -DisPatchingRules.LTWR(op, solution)
 
 
     @staticmethod
-    def T(op:OperationStep, solution:JSSolution):
-        '''Dispatching rule: 黄志. 作业车间调度问题的一种启发式算法.'''
-        remaining = -DisPatchingRules.MWKR(op, solution) - 1.5*op.source.duration
-        return solution.estimated_start_time(op), -remaining
+    def EST(op:OperationStep, solution:JSSolution):
+        '''Earliest Start Time.'''
+        return solution.estimated_start_time(op)
+    
+    @staticmethod
+    def LST(op:OperationStep, solution:JSSolution):
+        '''Longest Start Time.'''
+        return -DisPatchingRules.EST(op, solution)
+
+
+    @staticmethod
+    def HH(op:OperationStep, solution:JSSolution):
+        '''黄志, 黄文奇. 作业车间调度问题的一种启发式算法.'''
+        remaining = DisPatchingRules.LTWR(op, solution) - 1.5*op.source.duration
+        return DisPatchingRules.EST(op, solution), -remaining
     
 
     @staticmethod
-    def C(op:OperationStep, solution:JSSolution):
-        '''Dispatching rule: potential complete time first.'''
-        remaining = -DisPatchingRules.MWKR(op, solution) - 1.5*op.source.duration
-        machine_op = solution.machine_head(op).tailed_machine_op
-        est_start_time = solution.estimated_start_time(op)
-        return est_start_time+op.source.duration, int(est_start_time-machine_op.end_time>op.source.duration*0.2), -remaining
+    def IHH(op:OperationStep, solution:JSSolution):
+        '''Improved HH rule.'''
+        return DisPatchingRules.EST(op, solution), -DisPatchingRules.LTWR(op, solution)/op.source.duration
+    

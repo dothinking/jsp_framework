@@ -79,7 +79,7 @@ class BenchMark:
             optimum = p.optimum
             cal_value = p.solution.makespan
             ref = (optimum[0]+optimum[1])/2 if isinstance(optimum, tuple) else optimum
-            case = [i+1, p.name, s.name, f'{len(p.jobs)}x{len(p.machines)}', optimum, \
+            case = [i+1, p.name, s.name, f'{len(p.jobs)} x {len(p.machines)}', optimum, \
                         cal_value, round((cal_value/ref-1)*100,1), s.user_time]
             res.append(case)
 
@@ -91,7 +91,7 @@ class BenchMark:
         table = PrettyTable()
 
         # title
-        table.field_names = ['ID', 'Problem','Solver','Scale','Optimum', 'Solution', 'Error %', 'Time']
+        table.field_names = ['ID', 'Problem','Solver','job x machine','Optimum', 'Solution', 'Error %', 'Time']
 
         # data
         for line in self.summary_list(): table.add_row(line)
