@@ -31,7 +31,7 @@ class VarArraySolutionPrinter(cp_model.CpSolverSolutionCallback):
 
 class GoogleORCPSolver(JSSolver):
 
-    def __init__(self, name:str=None, max_time:int=None) -> None:
+    def __init__(self, name:str='or-tools', max_time:int=None) -> None:
         '''Solve JSP with Google OR-Tools.
 
         Args:

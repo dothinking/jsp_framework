@@ -1,6 +1,6 @@
 import logging
 from jsp_fwk import (JSProblem, JSSolution)
-from jsp_fwk.solver import (GoogleORCPSolver, PriorityDispatchSolver)
+from jsp_fwk.solver import (GoogleORCPSolver, PriorityDispatchSolver, PuLPSolver)
 
 
 def print_intermediate_solution(solution:JSSolution):
@@ -12,17 +12,20 @@ if __name__=='__main__':
     # ----------------------------------------
     # create problem from benchmark
     # ----------------------------------------
-    problem = JSProblem(benchmark='ft10')
+    problem = JSProblem(benchmark='ft06')
 
     # ----------------------------------------
     # test built-in solver
     # ----------------------------------------
-    # googl or-tools
+    # google or-tools
     # s = GoogleORCPSolver()
 
     # priority dispatching
-    rules = ['spt', 'mopr', 'mwkr', 'hh', 'ihh']
-    s = PriorityDispatchSolver(rule=rules[-1])
+    # rules = ['spt', 'mopr', 'mwkr', 'hh', 'ihh']
+    # s = PriorityDispatchSolver(rule=rules[-1])
+
+    # pulp solver
+    s = PuLPSolver()
 
     # ----------------------------------------
     # solve and result
