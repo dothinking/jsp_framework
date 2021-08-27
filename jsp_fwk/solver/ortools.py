@@ -22,7 +22,7 @@ class VarArraySolutionPrinter(cp_model.CpSolverSolutionCallback):
         '''Pass data back to domain class.'''
         # assign OR-Tools solution back to JSPSolution
         for op, var in self.__variables.items():
-            op.start_time = self.Value(var.start)
+            op.update_start_time(self.Value(var.start))
         
         # update solution
         self.__problem.update_solution(self.__solution)
@@ -30,6 +30,17 @@ class VarArraySolutionPrinter(cp_model.CpSolverSolutionCallback):
 
 
 class GoogleORCPSolver(JSSolver):
+
+    def __init__(self, name:str=None, max_time:int=None) -> None:
+        '''Solve JSP with Google OR-Tools.
+
+        Args:
+            name (str, optional): Solver name.
+            max_time (int, optional): Max solving time in seconds. Defaults to None, i.e. no limit.
+        '''        
+        super().__init__(name)
+        self.__max_time = max_time
+
 
     def do_solve(self, problem:JSProblem):
         '''Solve JSP with Google OR-Tools.
@@ -39,11 +50,13 @@ class GoogleORCPSolver(JSSolver):
         # Initialize an empty solution from problem
         solution = JSSolution(problem)
        
-        # Solving with Google OR-Tools
+        # create model
         model, variables = self.__create_model(solution)
-        solver = cp_model.CpSolver()
-        # status = solver.Solve(model)
 
+        # set solver
+        solver = cp_model.CpSolver()
+        if self.__max_time is not None:
+            solver.parameters.max_time_in_seconds = self.__max_time # set time limit
         solution_printer = VarArraySolutionPrinter(variables, problem, solution)
         status = solver.SolveWithSolutionCallback(model, solution_printer)
 

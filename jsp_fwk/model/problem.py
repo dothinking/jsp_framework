@@ -6,17 +6,19 @@ import json
 import random
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
-from .domain import Job, Machine, Operation
+from .domain import (Job, Machine, Operation, Cloneable)
+from ..common.exception import JSPException
 
 
-class JSProblem:
+class JSProblem(Cloneable):
     '''Base class for Job Shop Schedule Problem.
     '''
 
     def __init__(self, ops:list=None, 
                         num_jobs:int=0, num_machines:int=0, 
                         benchmark:str=None, 
-                        input_file:str=None) -> None:
+                        input_file:str=None,
+                        name:str=None) -> None:
         '''Initialize problem by operation list, or random problem with specified count of jobs 
         and machines, or just load data from benchmark/user-defined file. 
 
@@ -26,7 +28,10 @@ class JSProblem:
             num_machines (int, optional): Initialize random problem by specified count of machines. 
             benchmark (str, optional): Benchmark name to load associated data.
             input_file (str, optional): User defined data file path. 
+            name (str, optional): Problem name. Benchmark name if None. 
         '''
+        self.name = name
+        
         # solution
         self.__solution = None          # to solve  
         self.__optimum = None           # benchmark value
@@ -47,6 +52,7 @@ class JSProblem:
         # from benchmark
         elif benchmark:
             self.__ops = self.__load_from_benchmark(name=benchmark)
+            if not name: self.name = benchmark
         
         # from user input file
         elif input_file:
@@ -161,7 +167,7 @@ class JSProblem:
                     self.__optimum = (instance['bounds']['lower'], instance['bounds']['upper'])
                 break
         else:
-            raise Exception(f'Cannot find benchmark name: {name}.')
+            raise JSPException(f'Cannot find benchmark name: {name}.')
         
         # load jobs
         return self.__load_from_file(os.path.join(benchmark_path, filename))
@@ -170,7 +176,7 @@ class JSProblem:
     def __load_from_file(self, filename:str) -> list:
         '''Load jobs from formatted data file.'''
         if not os.path.exists(filename):
-            raise Exception(f'Cannot find data file: {filename}.')
+            raise JSPException(f'Cannot find data file: {filename}.')
         
         # load lines and skip comment line starting with #
         with open(filename, 'r') as f:

@@ -3,17 +3,41 @@
 
 import time
 import traceback
-from threading import Thread
+from threading import (Thread, currentThread)
 from matplotlib import pyplot as plt
 from .problem import JSProblem
+from .domain import Cloneable
 from ..common.exception import JSPException
 
 
-class JSSolver:
+class JSSolver(Cloneable):
 
-    def __init__(self) -> None:
-        '''Base solver for Job-Shop Schedule Problem.'''
+    def __init__(self, name:str=None) -> None:
+        '''Base solver for Job-Shop Schedule Problem.
+
+        Args:
+            name (str, optional): Solver name. Default to None, i.e. class name.
+        '''
+        self.name = name or self.__class__.__name__
         self.__running = False
+        self.__status = False
+        self.__thread = None
+        self.__user_time = time.perf_counter()
+
+    @property
+    def is_running(self): return self.__running
+
+    @property
+    def status(self): return self.__status
+
+    @property
+    def user_time(self):
+        '''Returns the user time in seconds since the creation of the solver.'''
+        return self.__user_time    
+
+    def wait(self):
+        '''Wait the termination of solving process in child thread.'''
+        self.__thread.join()
     
 
     def solve(self, problem:JSProblem, interval:int=None, callback=None):
@@ -36,8 +60,9 @@ class JSSolver:
             problem.register_solution_callback(callback=callback)
         
         # solve problem in child thread
-        thread = Thread(target=self.__solving_thread, args=(problem,))
-        thread.start()
+        self.__thread = Thread(target=self.__solving_thread, args=(problem,), \
+                                name=f'{currentThread().name}_{self.name}')
+        self.__thread.start()
 
         # show gantt chart and listen to the solution update in main thread
         if interval:
@@ -75,15 +100,16 @@ class JSSolver:
 
     def __solving_thread(self, problem:JSProblem):
         '''Solve problem in child thread.'''
-        t0 = time.time()
-        # solve problem
         try:
             self.do_solve(problem=problem)
+
         except JSPException:
+            self.__status = False
             traceback.print_exc()
-            print('Solving process failed.')
+        
         else:
-            print(f'Terminate successfully in {round(time.time()-t0, 1)} sec.')
+            self.__status = problem.solution.is_feasible()
+            
         finally:
-            # terminate normally
             self.__running = False
+            self.__user_time = round(time.perf_counter()-self.__user_time, 1)

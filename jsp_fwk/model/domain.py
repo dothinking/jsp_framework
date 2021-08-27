@@ -6,6 +6,9 @@ class Base:
     def __init__(self, id:int) -> None:
         '''An instance with an ID.'''
         self.id = id
+    
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}({self.id})'
 
 
 class Job(Base):
@@ -50,3 +53,22 @@ class Operation(Base):
 
     @property
     def duration(self): return self.__duration
+
+
+class Cloneable:
+    def copy(self):
+        '''Shallow copy of current instance.        
+        https://www.oreilly.com/library/view/python-cookbook/0596001673/ch05s12.html
+        '''
+        # create an empty class inheriting from this class and do nothing when initializing
+        class Empty(self.__class__):            
+            def __init__(self): pass
+        
+        # change back to the same class
+        newcopy = Empty()
+        newcopy.__class__ = self.__class__
+
+        # set same properties
+        newcopy.__dict__.update(self.__dict__)
+
+        return newcopy

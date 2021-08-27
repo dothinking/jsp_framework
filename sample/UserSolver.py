@@ -15,15 +15,15 @@ class UserSolver(JSSolver):
         # OperationStep instances. Note to evaluate solution explicitly if disjunctive 
         # graph model. In this case, just sort operations by job id, then create chain 
         # accordingly
-        def create_chain(ops:list):
-            pre = None
+        def create_chain(machine, ops:list):
+            pre = machine
             for op in ops:
                 op.pre_machine_op = pre
                 pre = op
 
         for machine, ops in solution.machine_ops.items():
             ops.sort(key=lambda op: op.source.job.id)
-            create_chain(ops)
+            create_chain(machine, ops)
             solution.evaluate()
 
             # (3) Update the solution for problem iteratively
@@ -36,4 +36,5 @@ if __name__=='__main__':
     problem = JSProblem(benchmark='ft10')
 
     s = UserSolver()
-    s.solve(problem=problem, interval=2000)
+    s.solve(problem=problem, interval=2000, \
+        callback=lambda solution: print(f'makespan: {solution.makespan}'))
