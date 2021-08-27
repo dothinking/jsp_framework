@@ -84,6 +84,18 @@ class MachineStep(Step):
         while True:
             if step.__next_machine_op is None: return step
             step = step.__next_machine_op
+    
+    @property
+    def utilization(self):
+        '''Utilization of current machine: service_time / (service_time + free_time).'''
+        service_time, total_time = 0, 0
+        op = self.__next_machine_op
+        while op:
+            service_time += op.source.duration
+            total_time = op.end_time
+            op = op.__next_machine_op
+        
+        return service_time/total_time if total_time else 1.0
 
 
 class OperationStep(JobStep, MachineStep):

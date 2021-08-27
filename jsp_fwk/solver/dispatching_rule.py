@@ -7,8 +7,8 @@ scheduled at the machine.
 A dispatching rule might be one of the basic dispatching rules below, or a combination of 
 several of them.
 
-Kaban, A. et al. “Comparison of dispatching rules in job-shop scheduling problem using simulation: 
-a case study.” International Journal of Simulation Modelling 11 (2012): 129-140.
+Kaban, A. et al. "Comparison of dispatching rules in job-shop scheduling problem using simulation: 
+a case study." International Journal of Simulation Modelling 11 (2012): 129-140.
 
 No. Rules   Description                     Type 
 ----------------------------------------------------
@@ -27,6 +27,17 @@ No. Rules   Description                     Type
 13  LTWR    Least Total Work Remaining      Dynamic 
 14  MTWR    Most Total Work Remaining       Dynamic 
 
+These rules are based on 3 static parameters:
+
+- Processing Time       : Time required to complete an operation on a specific machine. 
+- Process Sequence      : Total count of operations to complete a job. 
+- Total Processing Time : Total time required to complete a job. 
+
+and 3 dynamic parameters depending on the passage of time: 
+
+- Creation Time         : The time when an operation arriving at a machine. 
+- Waiting Time          : The time that an operation spent when waiting in the queue line on machine. 
+- Total Work Remaining  : The time for a job to complete the remaining operations. 
 '''
 
 from ..common.exception import JSPException
@@ -78,19 +89,17 @@ class PriorityDispatchSolver(JSSolver):
 
         # dispatch operation by priority
         while head_ops:
-            # sort by priority            
-            head_ops.sort(key=lambda op: self.__dispatching_rule(op, solution))
-
             # dispatch operation with the first priority
-            op = head_ops[0]
+            op = min(head_ops, key=lambda op: self.__dispatching_rule(op, solution))
             solution.dispatch(op)
             
-            # next loop
+            # update imminent operations
+            pos = head_ops.index(op)
             next_job_op = op.next_job_op
             if next_job_op is None:
-                head_ops = head_ops[1:]
+                head_ops = head_ops[0:pos] + head_ops[pos+1:]
             else:
-                head_ops[0] = next_job_op
+                head_ops[pos] = next_job_op
 
 
 class DisPatchingRules:
@@ -103,68 +112,47 @@ class DisPatchingRules:
             raise JSPException('Invalid rule name.')
         return fun_rule.__func__
 
-
+    # static parameters:
+    # - Processing Time       : Time required to complete an operation on a specific machine. 
+    # - Process Sequence      : Total count of operations to complete a job. 
+    # - Total Processing Time : Total time required to complete a job. 
     @staticmethod
-    def SPT(op:OperationStep, solution:JSSolution):
-        '''Shortest Processing Time.'''
+    def PT(op:OperationStep, solution:JSSolution):
+        '''Processing Time.'''
         return op.source.duration
 
     @staticmethod
-    def LPT(op:OperationStep, solution:JSSolution):
-        '''Longest Processing Time.'''
-        return -DisPatchingRules.SPT(op, solution)
-    
-
-    @staticmethod
-    def SPS(op:OperationStep, solution:JSSolution):
-        '''Shortest Process Sequence.'''
+    def PS(op:OperationStep, solution:JSSolution):
+        '''Process Sequence.'''
         job = solution.job_head(op)
-        return len(solution.job_ops[job])    
+        return len(solution.job_ops[job])   
 
     @staticmethod
-    def LPS(op:OperationStep, solution:JSSolution):
-        '''Longest Process Sequence.'''
-        return -DisPatchingRules.SPS(op, solution)
-
-    
-    @staticmethod
-    def STPT(op:OperationStep, solution:JSSolution):
-        '''Shortest Total Processing Time.'''
+    def TPT(op:OperationStep, solution:JSSolution):
+        '''Total Processing Time.'''
         job = solution.job_head(op)
-        return sum(op.source.duration for op in solution.job_ops[job])
-    
-    @staticmethod
-    def LTPT(op:OperationStep, solution:JSSolution):
-        '''Longest Total Processing Time.'''
-        return -DisPatchingRules.STPT(op, solution)
+        return sum(op.source.duration for op in solution.job_ops[job]) 
     
 
+    # dynamic parameters: 
+    # - Creation Time         : The time when an operation arriving at a machine. 
+    # - Waiting Time          : The time that an operation spent when waiting in the queue line on machine. 
+    # - Total Work Remaining  : The time for a job to complete the remaining operations. 
     @staticmethod
-    def ECT(op:OperationStep, solution:JSSolution):
-        '''Earliest Creation Time.'''
+    def CT(op:OperationStep, solution:JSSolution):
+        '''Creation Time.'''
         return op.pre_job_op.end_time
-    
-    @staticmethod
-    def LCT(op:OperationStep, solution:JSSolution):
-        '''Longest Creation Time.'''
-        return -DisPatchingRules.ECT(op, solution)
-    
 
     @staticmethod
-    def SWT(op:OperationStep, solution:JSSolution):
-        '''Shortest Waiting Time.'''
+    def WT(op:OperationStep, solution:JSSolution):
+        '''Waiting Time.'''
         arrive_time = op.pre_job_op.end_time
         machine_time = solution.machine_head(op).tailed_machine_op.end_time
         return max(machine_time-arrive_time, 0)
     
     @staticmethod
-    def LWT(op:OperationStep, solution:JSSolution):
-        '''Longest waiting Time.'''
-        return -DisPatchingRules.SWT(op, solution)
-
-    @staticmethod
-    def LTWR(op:OperationStep, solution:JSSolution):
-        '''Least Total Work Remaining.'''
+    def TWR(op:OperationStep, solution:JSSolution):
+        '''Total Work Remaining.'''
         num = 0
         ref = op
         while ref:
@@ -172,10 +160,73 @@ class DisPatchingRules:
             ref = ref.next_job_op
         return num
 
+    # ------------------------------
+    # static rules
+    # ------------------------------
+    @staticmethod
+    def SPT(op:OperationStep, solution:JSSolution):
+        '''Shortest Processing Time.'''
+        return DisPatchingRules.PT(op, solution)
+
+    @staticmethod
+    def LPT(op:OperationStep, solution:JSSolution):
+        '''Longest Processing Time.'''
+        return -DisPatchingRules.PT(op, solution)
+    
+    @staticmethod
+    def SPS(op:OperationStep, solution:JSSolution):
+        '''Shortest Process Sequence.'''
+        return DisPatchingRules.PS(op, solution)
+
+    @staticmethod
+    def LPS(op:OperationStep, solution:JSSolution):
+        '''Longest Process Sequence.'''
+        return -DisPatchingRules.PS(op, solution)
+    
+    @staticmethod
+    def STPT(op:OperationStep, solution:JSSolution):
+        '''Shortest Total Processing Time.'''
+        return DisPatchingRules.TPT(op, solution)
+    
+    @staticmethod
+    def LTPT(op:OperationStep, solution:JSSolution):
+        '''Longest Total Processing Time.'''
+        return -DisPatchingRules.TPT(op, solution)
+    
+
+    # ------------------------------
+    # dynamic rules
+    # ------------------------------
+    @staticmethod
+    def ECT(op:OperationStep, solution:JSSolution):
+        '''Earliest Creation Time.'''
+        return DisPatchingRules.CT(op, solution)
+    
+    @staticmethod
+    def LCT(op:OperationStep, solution:JSSolution):
+        '''Longest Creation Time.'''
+        return -DisPatchingRules.CT(op, solution)
+    
+
+    @staticmethod
+    def SWT(op:OperationStep, solution:JSSolution):
+        '''Shortest Waiting Time.'''
+        return DisPatchingRules.WT(op, solution)
+    
+    @staticmethod
+    def LWT(op:OperationStep, solution:JSSolution):
+        '''Longest waiting Time.'''
+        return -DisPatchingRules.WT(op, solution)
+
+    @staticmethod
+    def LTWR(op:OperationStep, solution:JSSolution):
+        '''Least Total Work Remaining.'''
+        return DisPatchingRules.TWR(op, solution)
+
     @staticmethod
     def MTWR(op:OperationStep, solution:JSSolution):
         '''Most Total Work Remaining.'''
-        return -DisPatchingRules.LTWR(op, solution)
+        return -DisPatchingRules.TWR(op, solution)
 
 
     @staticmethod
@@ -192,12 +243,11 @@ class DisPatchingRules:
     @staticmethod
     def HH(op:OperationStep, solution:JSSolution):
         '''黄志, 黄文奇. 作业车间调度问题的一种启发式算法.'''
-        remaining = DisPatchingRules.LTWR(op, solution) - 1.5*op.source.duration
+        remaining = DisPatchingRules.TWR(op, solution) - 1.5*op.source.duration
         return DisPatchingRules.EST(op, solution), -remaining
     
 
     @staticmethod
     def IHH(op:OperationStep, solution:JSSolution):
         '''Improved HH rule.'''
-        return DisPatchingRules.EST(op, solution), -DisPatchingRules.LTWR(op, solution)/op.source.duration
-    
+        return DisPatchingRules.EST(op, solution), -DisPatchingRules.TWR(op, solution)/op.source.duration

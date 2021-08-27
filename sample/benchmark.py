@@ -27,7 +27,8 @@ if __name__=='__main__':
     # priority dispatching
     rules = ['spt', 'lpt', 'sps', 'lps', 'stpt', 'ltpt', 'ect', 'lct', \
              'swt', 'lwt', 'ltwr', 'mtwr', 'est', 'lst', 'hh', 'ihh']
-    for rule in rules[-2:]:
+    for i in [0, -5, -2, -1]:
+        rule = rules[i]
         solvers.append(PriorityDispatchSolver(rule=rule, name=rule.upper()))
 
     # solvers = [s1,s2]
