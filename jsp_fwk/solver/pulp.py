@@ -20,7 +20,7 @@ class PuLPSolver(JSSolver):
 
 
     def do_solve(self, problem:JSProblem):
-        '''Solve JSP with PuLP.
+        '''Solve JSP with PuLP and the default CBC solver.
 
         https://github.com/KevinLu43/JSP-by-using-Mathematical-Programming-in-Python/
         '''
@@ -31,8 +31,8 @@ class PuLPSolver(JSSolver):
         model, variables = self.__create_model(solution)
 
         # The problem is solved using PuLP's choice of Solver
-        model.solve()
-        if model.status!=pulp.LpStatusOptimal: # {0: 'Not Solved', 1: 'Optimal', -1: 'Infeasible', -2: 'Unbounded', -3: 'Undefined'}
+        model.solve(pulp.PULP_CBC_CMD(maxSeconds=self.__max_time, msg=1, fracGap=0))
+        if model.status!=pulp.LpStatusOptimal:
             raise JSPException('No feasible solution found.')
 
         # assign pulp solution back to JSPSolution
@@ -88,7 +88,7 @@ class PuLPSolver(JSSolver):
         # (3) no overlap for operations assigned to same machine
         for op_a, op_b in combinations:
             model += (variables[op_a]-variables[op_b]) >= (op_b.source.duration - max_time*(1-bin_vars[op_a, op_b]))
-            model += (variables[op_b]-variables[op_a]) >= (op_a.source.duration - max_time*(bin_vars[op_a, op_b]))
+            model += (variables[op_b]-variables[op_a]) >= (op_a.source.duration - max_time*bin_vars[op_a, op_b])
 
         return model, variables
 

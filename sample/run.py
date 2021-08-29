@@ -12,7 +12,7 @@ if __name__=='__main__':
     # ----------------------------------------
     # create problem from benchmark
     # ----------------------------------------
-    problem = JSProblem(benchmark='ft06')
+    problem = JSProblem(benchmark='ft10')
 
     # ----------------------------------------
     # test built-in solver
@@ -25,7 +25,7 @@ if __name__=='__main__':
     # s = PriorityDispatchSolver(rule=rules[-1])
 
     # pulp solver
-    s = PuLPSolver()
+    s = PuLPSolver(max_time=60)
 
     # ----------------------------------------
     # solve and result
