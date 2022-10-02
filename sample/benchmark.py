@@ -1,6 +1,6 @@
 import logging
 from jsp_fwk import (JSProblem, JSSolution, BenchMark)
-from jsp_fwk.solver import (GoogleORCPSolver, PriorityDispatchSolver)
+from jsp_fwk.solver import (GoogleORCPSolver, PriorityDispatchSolver, PuLPSolver)
 
 
 def print_intermediate_solution(solution:JSSolution):
@@ -31,7 +31,9 @@ if __name__=='__main__':
         rule = rules[i]
         solvers.append(PriorityDispatchSolver(rule=rule, name=rule.upper()))
 
-    # solvers = [s1,s2]
+    # PuLP solver
+    s = PuLPSolver(solver_name='gurobi', max_time=300)
+    solvers = [s]
 
     # ----------------------------------------
     # solve and result

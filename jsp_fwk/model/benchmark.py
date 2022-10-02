@@ -76,11 +76,20 @@ class BenchMark:
         '''
         res = []
         for (i, p, s) in self.__solved_cases:
+            # benchmarking
             optimum = p.optimum
-            cal_value = p.solution.makespan
             ref = (optimum[0]+optimum[1])/2 if isinstance(optimum, tuple) else optimum
+
+            # solved
+            if p.solution:
+                cal_value = p.solution.makespan
+                err = round((cal_value/ref-1)*100,1)
+            else:
+                cal_value = 'unsolved'
+                err = 'n.a.'
+            
             case = [i+1, p.name, s.name, f'{len(p.jobs)} x {len(p.machines)}', optimum, \
-                        cal_value, round((cal_value/ref-1)*100,1), s.user_time]
+                        cal_value, err, s.user_time]
             res.append(case)
 
         return res
