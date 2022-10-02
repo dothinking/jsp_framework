@@ -7,15 +7,25 @@ from ..model.solution import JSSolution
 
 class PuLPSolver(JSSolver):
 
-    def __init__(self, name:str='pulp', max_time:int=None) -> None:
+    SOLVER_DICT = {
+        'CBC': pulp.PULP_CBC_CMD,      # default by pulp
+        'SCIP': pulp.SCIP_CMD,         # install and set env path manually
+        'GUROBI': pulp.GUROBI_CMD
+    }
+
+    def __init__(self, name:str='pulp', solver_name:str='CBC', max_time:int=None, msg:bool=False) -> None:
         '''Solve JSP with PuLP, which is an LP modeler written in python. PuLP can generate MPS 
         or LP files and call GLPK, COIN CLP/CBC, CPLEX, and GUROBI to solve linear problems.
 
         Args:
-            name (str, optional): Solver name.
+            name (str, optional): JSP solver name.
+            solver_name (str, optional): solver for MIP, default to CBC; support also SCIP or Gurobi.
             max_time (int, optional): Max solving time in seconds. Defaults to None, i.e. no limit.
+            msg (bool, optional): show solver log or not. Default to False.
         '''        
-        super().__init__(name)
+        super().__init__(name)        
+        self.__solver_name = solver_name
+        self.__msg = msg
         self.__max_time = max_time
 
 
@@ -30,8 +40,10 @@ class PuLPSolver(JSSolver):
         # create model
         model, variables = self.__create_model(solution)
 
-        # The problem is solved using PuLP's choice of Solver
-        model.solve(pulp.PULP_CBC_CMD(maxSeconds=self.__max_time, msg=1, fracGap=0))
+        # solver        
+        solver_cmd = self.SOLVER_DICT.get(self.__solver_name.upper(), pulp.PULP_CBC_CMD)
+        solver = solver_cmd(msg=self.__msg, timeLimit=self.__max_time)
+        model.solve(solver)
         if model.status!=pulp.LpStatusOptimal:
             raise JSPException('No feasible solution found.')
 

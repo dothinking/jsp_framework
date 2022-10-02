@@ -32,7 +32,7 @@ if __name__=='__main__':
         solvers.append(PriorityDispatchSolver(rule=rule, name=rule.upper()))
 
     # PuLP solver
-    s = PuLPSolver(max_time=300)
+    s = PuLPSolver(solver_name='gurobi', max_time=300)
     solvers = [s]
 
     # ----------------------------------------

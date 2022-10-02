@@ -4,8 +4,8 @@ A framework to implement and test algorithm for Job-Shop schedule problem (JSP).
 
 - Test pre-defined solver
 
-    - [x] Google OR-Tools Constrain Programming solver
-    - [ ] PuLP
+    - [x] Google OR-Tools Constraint Programming solver
+    - [x] PuLP framework (CBC, SCIP, Gurobi)
     - [x] Priority dispatching
     - [ ] Tabu search
     - [ ] Genetic algorithm 
