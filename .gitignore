@@ -1,6 +1,10 @@
 *.pyc
 .vscode/
 
+# sample folder
+sample/
+!sample/*.py
+
 # building dir
 build/
 dist/

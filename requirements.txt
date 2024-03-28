@@ -1,3 +1,4 @@
 ortools
 pulp
 prettytable
+matplotlib

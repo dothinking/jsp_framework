@@ -1,40 +1,39 @@
+'''User solver sample.'''
+
 import time
 from jsp_fwk import (JSProblem, JSSolution, JSSolver)
 
 
 class UserSolver(JSSolver):
+    '''Sample solver.'''
 
     def do_solve(self, problem:JSProblem):
-        '''A sample solving process: the sequence of operations assigned to each machine 
+        '''A sample solving process: the sequence of operations assigned to each machine
         is determined by job id. Obviously, it's a feasible but far from optimal solution.
         '''
         # (1) Initialize an empty solution from problem
-        solution = JSSolution(problem)
-       
-        # (2) Solve or optimize the solution, i.e. determine the start_time of 
-        # OperationStep instances. Note to evaluate solution explicitly if disjunctive 
-        # graph model. In this case, just sort operations by job id, then create chain 
-        # accordingly
-        def create_chain(machine, ops:list):
-            pre = machine
-            for op in ops:
-                op.pre_machine_op = pre
-                pre = op
+        solution = JSSolution(problem, direct_mode=False)
 
-        for machine, ops in solution.machine_ops.items():
-            ops.sort(key=lambda op: op.source.job.id)
-            create_chain(machine, ops)
-            solution.evaluate()
+        # (2) Solve or optimize the solution, i.e., determine the start_time of
+        # OperationStep instances. In this case, just sort operations by job id,
+        # then create chain accordingly.
+        ops = sorted(solution.ops, key=lambda op: op.source.job.id)
+        for op in ops:
+            solution.dispatch(op)
 
-            # (3) Update the solution for problem iteratively
-            time.sleep(1)
-            problem.update_solution(solution)
+            # (3) Optional: update solution iteratively
+            time.sleep(0.1)
+            self.update_solution(solution)
 
 
 if __name__=='__main__':
 
-    problem = JSProblem(benchmark='ft10')
+    p = JSProblem(benchmark='la01')
 
     s = UserSolver()
-    s.solve(problem=problem, interval=2000, \
-        callback=lambda solution: print(f'makespan: {solution.makespan}'))
+    s.solve(problem=p,
+            interval=0,
+            callback=lambda solution: print(f'makespan: {solution.makespan}'))
+
+    s.wait()
+    s.solution.plot_gantt_chart()

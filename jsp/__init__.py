@@ -1,8 +1,10 @@
+'''Import common object.'''
+
 # domain class
 from .model.domain import (Job, Machine, Operation)
 
 # variable
-from .model.variable import (JobStep, MachineStep, OperationStep)
+from .model.variable import OperationStep
 
 # problem, solution and solver
 from .model.problem import JSProblem

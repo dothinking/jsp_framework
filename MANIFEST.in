@@ -1,2 +1,2 @@
-include jsp_fwk/benchmark/*
-recursive-include jsp_fwk/benchmark/instances *
+include jsp/benchmark/*
+recursive-include jsp/benchmark/instances *
