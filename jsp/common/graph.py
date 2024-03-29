@@ -1,34 +1,35 @@
-'''Directed graph and associated algorithms.
-'''
+'''Directed graph and associated algorithms.'''
+
 from collections import (defaultdict, deque)
+from .exception import JSPException
 
 
 class DirectedGraph:
+    '''Directed graph represented by adjacent list.'''
 
     def __init__(self) -> None:
-        '''Directed graph represented by adjacent list.'''
         #  initialize empty adjacency map: node -> [node1, node2, ...]
         self.__adjacency = defaultdict(list)
-
         # empty in degrees: node -> int
         self.__in_degrees = defaultdict(int)
-    
+
 
     def __str__(self) -> str:
         '''Show adjacent list of graph.'''
-        f = lambda node: str(node.id)
-        items = [f'{node.id}: {",".join(map(f, node_list))}' for node, node_list in self.__adjacency.items()]
+        def f(node): return str(node.id)
+        items = [f'{node.id}: {",".join(map(f, node_list))}' \
+                 for node, node_list in self.__adjacency.items()]
         return '\n'.join(items)
 
 
     def add_edge(self, node_from, node_to):
-        '''Add a directed edge from `node_from` to `node_to`. 
+        '''Add a directed edge from `node_from` to `node_to`.
 
         Args:
             node_from: Start node in user defined type.
             node_to: End node in user defined type.
         '''
-        self.__adjacency[node_from].append(node_to)        
+        self.__adjacency[node_from].append(node_to)
 
         # update in degree
         # NOTE: the in degree of source node is always zero
@@ -38,8 +39,7 @@ class DirectedGraph:
 
 
     def sort(self) -> list:
-        '''Sort nodes in topological order.
-        '''
+        '''Sort nodes in topological order.'''
         res = []
 
         # collect nodes with zero in degree
@@ -59,13 +59,12 @@ class DirectedGraph:
             for adj_node in self.__adjacency[node]:
                 in_degrees[adj_node] -= 1
                 if in_degrees[adj_node]==0: q.append(adj_node)
-        
+
         # the in-degree of all nodes must be zero if the Topological Sorting is successful
         for node, in_degree in in_degrees.items():
             if in_degree!=0: return []
-        
         return res
-    
+
 
     def longest_path(self, node_from, node_to, fun_weight) -> float:
         '''Calculate the longest path length between two nodes.
@@ -75,11 +74,11 @@ class DirectedGraph:
         Args:
             node_from: Start node.
             node_to: End node.
-            fun_weight: Function handle taking the start node instance as input, returns a float 
+            fun_weight: Function handle taking the start node instance as input, returns a float
                 value representing the weight value of the associated edge.
         '''
         if node_from not in self.__adjacency or node_to not in self.__adjacency:
-            raise Exception('Nodes not exist in current graph.')
+            raise JSPException('Nodes not exist in current graph.')
 
         max_value = float('inf')
         min_value = float('-inf')
@@ -105,5 +104,4 @@ class DirectedGraph:
                 new_length = dist[node] + fun_weight(adj_node)
                 if dist[adj_node] < new_length:
                     dist[adj_node] = new_length
-        
         return dist[node_to]

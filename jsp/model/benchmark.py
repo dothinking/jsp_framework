@@ -1,19 +1,24 @@
+'''Test multiple solvers on multiple problems.'''
+from typing import (List, Tuple)
 import logging
 import threading
 from queue import Queue
 from prettytable import PrettyTable
+from .problem import JSProblem
+from .solver import JSSolver
 
 
 # logging
 logging.basicConfig(
-    level=logging.INFO, 
+    level=logging.INFO,
     format="[%(asctime)s %(threadName)s] %(message)s",
     datefmt='%Y-%m-%d %H:%M:%S')
 
 
 class BenchMark:
+    '''Solvers benchmark.'''
 
-    def __init__(self, problems:list, solvers:list, num_threads:int=4) -> None:
+    def __init__(self, problems:List[JSProblem], solvers:List[JSSolver], num_threads:int=4) -> None:
         '''Solve a list of problem with a list of solvers, respectively.
 
         Args:
@@ -28,14 +33,16 @@ class BenchMark:
         i = 0 # indicating the order
         for problem in problems:
             for solver in solvers:
-                self.__solving_queue.put((i, problem.copy(), solver.copy()))
+                self.__solving_queue.put((i, problem, solver.copy()))
                 i += 1
-        
-        # solvered cases: [(id, problem, solver), ...]
+        # solved cases: [(id, problem, solver), ...]
         self.__solved_cases = []
 
+
     @property
-    def result(self): return self.__solved_cases
+    def result(self) -> List[Tuple[int,JSProblem,JSSolver]]:
+        '''solved cases: [(id, problem, solver), ...].'''
+        return self.__solved_cases
 
 
     def run(self, show_info:bool=True, callback=None):
@@ -43,68 +50,66 @@ class BenchMark:
 
         Args:
             show_info (bool, optional): Show information during solving process. Defaults to True.
-            callback (function, optional): User defined function called during each iteration. 
+            callback (function, optional): User defined function called during each iteration.
                 Defaults to None.
-        '''        
+        '''
         fun_callback = callback if show_info else None
         # create child threads
         for i in range(self.__num_threads):
-            thread = threading.Thread(target=self.__solve_one_case, args=(show_info, fun_callback), \
-                name=f'Runner_{i}')
-            thread.setDaemon(True) # terminate this child thread when the main thread terminates
+            thread = threading.Thread(target=self.__solve_one_case,
+                                      args=(show_info, fun_callback),
+                                      name=f'Runner_{i}')
+            thread.setDaemon(True) # terminate this child thread if the main thread terminates
             thread.start()
 
         # wait for termination
         self.__solving_queue.join()
 
         # sort result cases by id
-        self.__solved_cases.sort(key=lambda case: case[0])
+        self.result.sort(key=lambda case: case[0])
 
         # print final results
-        if show_info: logging.info(f'\n{self.summary()}')
+        if show_info: logging.info('\n%s', self.summary())
 
 
     def summary_list(self) -> list:
-        '''Collect benchmark results in list: 
+        '''Collect benchmark results in list:
         [
-            [index, problem name, solver name, problem scale, optimum, calculated value, error, spent time],
+            [index, problem name, solver name, problem scale,
+                        optimum, calculated value, error, spent time],
             ...,
-        ]        
-
-        Args:
-            solved_cases (list): A list of solved cases: (problem, solver).
+        ]
         '''
         res = []
-        for (i, p, s) in self.__solved_cases:
+        for (i, p, s) in self.result:
             # benchmarking
             optimum = p.optimum
             ref = (optimum[0]+optimum[1])/2 if isinstance(optimum, tuple) else optimum
 
             # solved
-            if p.solution:
-                cal_value = p.solution.makespan
+            if s.solution and s.solution.is_feasible:
+                cal_value = s.solution.makespan
                 err = round((cal_value/ref-1)*100,1)
             else:
                 cal_value = 'unsolved'
                 err = 'n.a.'
-            
+
             case = [i+1, p.name, s.name, f'{len(p.jobs)} x {len(p.machines)}', optimum, \
                         cal_value, err, s.user_time]
             res.append(case)
-
         return res
-    
+
 
     def summary(self) -> str:
         '''Output benchmark result in tabular format.'''
         table = PrettyTable()
 
         # title
-        table.field_names = ['ID', 'Problem','Solver','job x machine','Optimum', 'Solution', 'Error %', 'Time']
+        table.field_names = ['ID', 'Problem', 'Solver', 'job x machine',
+                             'Optimum', 'Solution', 'Error %', 'Time']
 
         # data
         for line in self.summary_list(): table.add_row(line)
-
         return table
 
 
@@ -115,7 +120,7 @@ class BenchMark:
 
             # start solving
             if show_info:
-                logging.info(f'Start solving "{problem.name}" with "{solver.name}"...')
+                logging.info('Start solving "%s" with "%s"...', problem.name, solver.name)
             solver.solve(problem=problem, interval=None, callback=callback) # don't show gantt chart
             solver.wait() # wait for termination
 
@@ -123,7 +128,6 @@ class BenchMark:
             self.__solved_cases.append((i, problem, solver))
             self.__solving_queue.task_done()
             if show_info:
-                logging.info(f'{"Successfully" if solver.status else "Failed"} to solve "{problem.name}" with "{solver.name}" in {solver.user_time} sec.')
-    
-
-    
+                res = "Successfully" if solver.status else "Failed"
+                logging.info('%s to solve "%s" with "%s" in %f sec.',
+                             res, problem.name, solver.name, solver.user_time)

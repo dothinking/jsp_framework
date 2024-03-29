@@ -1,3 +1,4 @@
+'''Google OR-Tools solver.'''
 from collections import (namedtuple, defaultdict)
 from ortools.sat.python import cp_model
 from ..common.exception import JSPException
@@ -11,11 +12,11 @@ class VarArraySolutionPrinter(cp_model.CpSolverSolutionCallback):
 
     https://github.com/google/or-tools/blob/stable/ortools/sat/doc/solver.md#printing-intermediate-solutions
     '''
-    def __init__(self, variables:dict, problem:JSProblem, solution:JSSolution):
+    def __init__(self, variables:dict, solver:JSSolver, solution:JSSolution):
         '''Initialize with variable map: operation step -> OR-Tools variable.'''
         cp_model.CpSolverSolutionCallback.__init__(self)
         self.__variables = variables
-        self.__problem = problem
+        self.__solver = solver
         self.__solution = solution
 
     def on_solution_callback(self):
@@ -23,13 +24,13 @@ class VarArraySolutionPrinter(cp_model.CpSolverSolutionCallback):
         # assign OR-Tools solution back to JSPSolution
         for op, var in self.__variables.items():
             op.update_start_time(self.Value(var.start))
-        
-        # update solution
-        self.__problem.update_solution(self.__solution)
 
+        # update solution
+        self.__solver.update_solution(self.__solution)
 
 
 class GoogleORCPSolver(JSSolver):
+    '''Google OR-Tools solver.'''
 
     def __init__(self, name:str='or-tools', max_time:int=None) -> None:
         '''Solve JSP with Google OR-Tools.
@@ -37,7 +38,7 @@ class GoogleORCPSolver(JSSolver):
         Args:
             name (str, optional): Solver name.
             max_time (int, optional): Max solving time in seconds. Defaults to None, i.e. no limit.
-        '''        
+        '''
         super().__init__(name)
         self.__max_time = max_time
 
@@ -48,8 +49,8 @@ class GoogleORCPSolver(JSSolver):
         https://developers.google.cn/optimization/scheduling/job_shop
         '''
         # Initialize an empty solution from problem
-        solution = JSSolution(problem)
-       
+        solution = JSSolution(problem, direct_mode=True)
+
         # create model
         model, variables = self.__create_model(solution)
 
@@ -57,12 +58,11 @@ class GoogleORCPSolver(JSSolver):
         solver = cp_model.CpSolver()
         if self.__max_time is not None:
             solver.parameters.max_time_in_seconds = self.__max_time # set time limit
-        solution_printer = VarArraySolutionPrinter(variables, problem, solution)
-        status = solver.SolveWithSolutionCallback(model, solution_printer)
 
-        if status!=cp_model.OPTIMAL and status!=cp_model.FEASIBLE:
+        solution_printer = VarArraySolutionPrinter(variables, self, solution)
+        status = solver.SolveWithSolutionCallback(model, solution_printer)
+        if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             raise JSPException('No feasible solution found.')
-    
 
 
     def __create_model(self, solution:JSSolution):
@@ -71,25 +71,28 @@ class GoogleORCPSolver(JSSolver):
         model = cp_model.CpModel()
 
         # create variables
-        variable = namedtuple('variable', 'start, end, interval') # variable for a single operation        
+        variable = namedtuple('variable', 'start, end, interval') # variable for a single operation
         max_time = sum(op.source.duration for op in solution.ops) # upper bound of variables
 
         variables = {} # all variables
         machine_intervals = defaultdict(list) # interval variables assigned to same machine
         for op in solution.ops:
             source = op.source
-            i = source.id
-            start_var = model.NewIntVar(0, max_time, f'start-{i}')
-            end_var = model.NewIntVar(0, max_time, f'end-{i}')
-            interval_var = model.NewIntervalVar(start_var, source.duration, end_var, f'interval-{i}')
+            i,j = source.job.id, source.machine.id
+            start_var = model.NewIntVar(0, max_time, f'start-{i}-{j}')
+            end_var = model.NewIntVar(0, max_time, f'end-{i}-{j}')
+            interval_var = model.NewIntervalVar(start_var,
+                                                source.duration,
+                                                end_var,
+                                                f'interval-{i}-{j}')
             variables[op] = variable(start=start_var, end=end_var, interval=interval_var)
             machine_intervals[source.machine].append(interval_var)
-        
+
         # apply constraints
         # (1) no overlap for operations assigned to same machine
-        for machine, interval_vars in machine_intervals.items():
+        for interval_vars in machine_intervals.values():
             model.AddNoOverlap(interval_vars)
-        
+
         # (2) operation sequence inside a job
         pre = None
         for op, var in variables.items():
@@ -97,10 +100,11 @@ class GoogleORCPSolver(JSSolver):
                 pre_var = variables[pre]
                 model.Add(pre_var.end<=var.start)
             pre = op
-        
+
         # objective: makespan
         obj_var = model.NewIntVar(0, max_time, 'makespan')
-        model.AddMaxEquality(obj_var, [variables[ops[-1]].end for job, ops in solution.job_ops.items()])
+        model.AddMaxEquality(obj_var,
+                             [variables[job.tail_job_op].end for job in solution.job_ops])
         model.Minimize(obj_var)
 
         return model, variables

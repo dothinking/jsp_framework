@@ -1,4 +1,8 @@
 *.pyc
+*.lp
+*.sol
+
+sample/
 .vscode/
 
 # building dir
