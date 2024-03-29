@@ -1,7 +1,7 @@
 '''User solver sample.'''
 
 import time
-from jsp_fwk import (JSProblem, JSSolution, JSSolver)
+from jsp import (JSProblem, JSSolution, JSSolver)
 
 
 class UserSolver(JSSolver):

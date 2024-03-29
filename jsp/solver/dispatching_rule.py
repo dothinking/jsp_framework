@@ -71,8 +71,7 @@ class PriorityDispatchSolver(JSSolver):
             self.__dispatching_rule = DisPatchingRules.get(rule.upper())
         elif fun_rule:
             self.__dispatching_rule = fun_rule
-        else:
-            raise JSPException('Invalid rule.')
+
 
     def do_solve(self, problem:JSProblem):
         solution = JSSolution(problem=problem, direct_mode=False)

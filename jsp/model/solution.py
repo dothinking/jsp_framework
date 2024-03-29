@@ -4,14 +4,14 @@ machine chain operations sequence first and deduce start time accordingly.
 '''
 from typing import (List, Union)
 from collections import defaultdict
-from .domain import (Job, Machine, Operation)
+from .domain import (Clone, Job, Machine, Operation)
 from .variable import OperationStep
 from ..common.graph import DirectedGraph
 from ..common.plot import (plot_gantt_chart_axes, plot_gantt_chart_bars)
 from .problem import JSProblem
 
 
-class JSSolution:
+class JSSolution(Clone):
     '''Solution of job-shop problem.'''
 
     def __init__(self, problem:JSProblem, direct_mode:bool=True) -> None:

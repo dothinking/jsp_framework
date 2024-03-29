@@ -63,7 +63,7 @@ class PuLPSolver(JSSolver):
     def __create_model(self, solution:JSSolution):
         '''Create PuLP model: variables, constraints and objective.'''
         # create the model
-        model = pulp.LpProblem("min_makespan", pulp.LpMinimize)
+        model = pulp.LpProblem(f"min_makespan-{id(self)}", pulp.LpMinimize)
 
         # create variables
         # (1) start time of each operation

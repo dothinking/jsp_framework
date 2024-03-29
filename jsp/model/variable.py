@@ -16,7 +16,7 @@ job/machine.
 +---------+     +-----+     +-----+
 '''
 
-from jsp_fwk.common.exception import JSPException
+from ..common.exception import JSPException
 from .domain import (Machine, Operation)
 
 

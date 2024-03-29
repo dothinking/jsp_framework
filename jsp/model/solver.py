@@ -13,7 +13,6 @@ from ..common.exception import JSPException
 from ..common.plot import (plot_gantt_chart_axes, plot_gantt_chart_bars)
 
 
-
 class JSSolver(Clone, ABC):
     '''Solver.'''
 
@@ -67,7 +66,7 @@ class JSSolver(Clone, ABC):
         '''
         # update solution and run user defined function
         self.__solution = solution
-        self.__fun_callback(solution)
+        if self.__fun_callback: self.__fun_callback(solution)
 
         # signal to update gantt chart
         self.__need_update_chart = True

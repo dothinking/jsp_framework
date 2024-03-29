@@ -3,12 +3,11 @@ import os
 import json
 import random
 from typing import List
-from .domain import (Job, Machine, Operation, Clone)
+from .domain import (Job, Machine, Operation)
 from ..common.exception import JSPException
 
 
-
-class JSProblem(Clone):
+class JSProblem:
     '''Base class for Job Shop Schedule Problem.'''
 
     def __init__(self, ops:List[Operation]=None,
@@ -77,7 +76,8 @@ class JSProblem(Clone):
 
 
     def __collect_jobs_and_machines(self):
-        jobs, machines = zip(*((op.job, op.machine) for op in self.__ops))
+        if not self.ops: return None, None
+        jobs, machines = zip(*((op.job, op.machine) for op in self.ops))
         jobs = sorted(set(jobs), key=lambda job: job.id)
         machines = sorted(set(machines), key=lambda machine: machine.id)
         return jobs, machines

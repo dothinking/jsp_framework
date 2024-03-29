@@ -2,8 +2,9 @@
 .vscode/
 
 # sample folder
-sample/
-!sample/*.py
+*.txt
+*.lp
+*.sol
 
 # building dir
 build/

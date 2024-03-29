@@ -1,8 +1,8 @@
 '''Test.'''
 
 import logging
-from jsp_fwk import (JSProblem, JSSolution)
-from jsp_fwk.solver import (GoogleORCPSolver, PriorityDispatchSolver, PuLPSolver)
+from jsp import (JSProblem, JSSolution)
+from jsp.solver import (GoogleORCPSolver, PriorityDispatchSolver, PuLPSolver)
 
 
 def print_intermediate_solution(solution:JSSolution):
@@ -15,7 +15,7 @@ if __name__=='__main__':
     # ----------------------------------------
     # create problem from benchmark
     # ----------------------------------------
-    problem = JSProblem(benchmark='la01')
+    problem = JSProblem(benchmark='la01') #la01
     # problem = JSProblem(benchmark='ft10')
     # problem = JSProblem(input_file='1.txt')
 
@@ -24,19 +24,19 @@ if __name__=='__main__':
     # test built-in solver
     # ----------------------------------------
     # google or-tools
-    # s = GoogleORCPSolver()
+    s = GoogleORCPSolver(max_time=100)
 
     # priority dispatching
     rules = ['spt', 'mopr', 'mwkr', 'hh', 'ihh']
-    s = PriorityDispatchSolver(rule=rules[-2])
+    # s = PriorityDispatchSolver(rule=rules[-2])
 
     # pulp solver
-    # s = PuLPSolver(max_time=300, solver_name='SCIP', msg=1)
+    s = PuLPSolver(max_time=300, solver_name='SCIP', msg=1)
 
     # ----------------------------------------
     # solve and result
     # ----------------------------------------
-    s.solve(problem=problem, interval=1000, callback=print_intermediate_solution)
+    s.solve(problem=problem, interval=2000, callback=print_intermediate_solution)
     s.wait()
     print('----------------------------------------')
     if s.status:
