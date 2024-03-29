@@ -2,3 +2,4 @@ ortools
 pulp
 prettytable
 matplotlib
+networkx

@@ -4,8 +4,6 @@ import time
 import traceback
 from abc import (ABC, abstractmethod)
 from threading import (Thread, currentThread)
-from matplotlib import pyplot as plt
-from matplotlib.animation import FuncAnimation
 from .problem import JSProblem
 from .solution import JSSolution
 from .domain import Clone
@@ -82,6 +80,9 @@ class JSSolver(Clone, ABC):
             callback (function): User defined function called when a better solution is found.
                 It takes a `JSSolution` instance as input.
         '''
+        from matplotlib import pyplot as plt
+        from matplotlib.animation import FuncAnimation
+
         if self.__running:
             raise JSPException("There's already a solving process is running.")
 

@@ -7,7 +7,7 @@ from collections import defaultdict
 from .domain import (Clone, Job, Machine, Operation)
 from .variable import OperationStep
 from ..common.graph import DirectedGraph
-from ..common.plot import (plot_gantt_chart_axes, plot_gantt_chart_bars)
+from ..common.plot import (plot_gantt_chart_axes, plot_gantt_chart_bars, plot_disjunctive_graph)
 from .problem import JSProblem
 
 
@@ -217,6 +217,56 @@ class JSSolution(Clone):
         )
         plot_gantt_chart_bars(axis_job, axis_machine, self.ops, self.makespan)
         plt.show()
+
+
+    def plot_disjunctive_graph(self):
+        '''Plot disjunctive graph.'''
+        def node_id(op): return (op.source.job.id,op.source.machine.id)
+
+        # adaptive size based on machine and job numbers
+        m, n = len(self.job_ops), len(self.machine_ops)
+
+        # source and sink nodes
+        source, sink = 'S', 'E'
+
+        # node position
+        k_w, k_h = 2.0, 1.2 # scale factor
+        pos = {
+            source: (0, (m-1)/2*k_h),
+            sink: (k_w*(n+1), (m-1)/2*k_h)
+        }
+
+        # edges in job chain
+        job_ops = defaultdict(list)
+        for op in self.ops: job_ops[op.source.job].append(op)
+        job_edges = []
+        for i,job in enumerate(job_ops):
+            pre = source
+            for j,op in enumerate(job_ops[job], start=1):
+                nid = node_id(op)
+                pos[nid] = (k_w*j, k_h*i)
+                if j==1:
+                    job_edges.append((pre, nid, 0))
+                else:
+                    job_edges.append((node_id(pre), nid, pre.source.duration))
+                pre = op
+            job_edges.append((node_id(op), sink, op.source.duration))
+
+        # edges in machine chain
+        machine_ops = defaultdict(list)
+        for op in self.ops:
+            machine_ops[op.source.machine].append(op)
+
+        machine_edges = []
+        for ops in machine_ops.values():
+            ops.sort(key=lambda op: op.start_time) # sort by start time
+            pre = ops[0]
+            for op in ops[1:]:
+                machine_edges.append((node_id(pre), node_id(op)))
+                pre = op
+        # plot
+        plot_disjunctive_graph(num_jobs=m, num_machines=n, pos=pos,
+                               job_edges=job_edges, machine_edges=machine_edges)
 
 
     def __create_job_chain(self):
