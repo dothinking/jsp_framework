@@ -1,10 +1,9 @@
 *.pyc
-.vscode/
-
-# sample folder
-*.txt
 *.lp
 *.sol
+
+sample/
+.vscode/
 
 # building dir
 build/

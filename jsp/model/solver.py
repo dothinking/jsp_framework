@@ -150,7 +150,7 @@ class JSSolver(Clone, ABC):
             traceback.print_exc()
 
         else:
-            self.__status = self.solution.is_feasible()
+            self.__status = self.solution.is_feasible
 
         finally:
             self.__running = False

@@ -125,6 +125,7 @@ class JSSolution(Clone):
         return solution
 
 
+    @property
     def is_feasible(self) -> bool:
         '''If current solution is valid or not.
         Note to call this method after evaluating the solution if based on disjunctive graph model.
