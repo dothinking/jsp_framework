@@ -2,6 +2,7 @@
 *.lp
 *.sol
 
+test/
 sample/
 .vscode/
 

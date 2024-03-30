@@ -44,6 +44,8 @@ python setup.py develop
 - [Class diagram](./doc/class_diagram.md)
 
 
+Combined documents in Chinese here [作业车间调度问题求解框架](https://dothinking.github.io/2021-08-08-作业车间调度问题求解框架/).
+
 ## License
 
 The project is licensed under the terms of the Apache License 2.0.

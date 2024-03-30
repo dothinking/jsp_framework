@@ -81,7 +81,7 @@ def plot_disjunctive_graph(num_jobs:int,
                            machine_edges:list):
     '''Plot disjunctive graph.'''
     # adaptive size based on machine and job numbers
-    W, H = int(2.0*(num_machines+2)), int(1.2*(num_jobs+1)) # figure size
+    W, H = int(2.0*(num_machines+1)), int(1.2*(num_jobs-1)) # figure size
     t = min(W/num_machines, H/num_jobs) # font size scale
     node_size, font_size = 800*t, 8*t
 
@@ -125,7 +125,7 @@ def plot_disjunctive_graph(num_jobs:int,
 
     # weight labels
     edge_labels = nx.get_edge_attributes(G, "weight")
-    nx.draw_networkx_edge_labels(G, pos, edge_labels)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels, font_size=font_size)
 
     # plot
     plt.rcParams['figure.figsize']= (W, H) # figure size
