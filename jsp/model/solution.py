@@ -8,22 +8,21 @@ from .domain import (Clone, Job, Machine, Operation)
 from .variable import OperationStep
 from ..common.graph import DirectedGraph
 from ..common.plot import (plot_gantt_chart_axes, plot_gantt_chart_bars, plot_disjunctive_graph)
-from .problem import JSProblem
 
 
 class JSSolution(Clone):
     '''Solution of job-shop problem.'''
 
-    def __init__(self, problem:JSProblem, direct_mode:bool=True) -> None:
+    def __init__(self, ops:List[OperationStep], direct_mode:bool=True) -> None:
         '''Initialize solution by copying all operations from `problem`.
 
         Args:
-            problem (JSProblem): Problem to solve.
+            ops (List[OperationStep): operation steps.
             direct_mode (bool): solve operation start time directly if True, otherwise,
                 solve machine chain first and deduce start time accordingly.
         '''
         self.__direct_mode = direct_mode
-        self.__ops = [OperationStep(op) for op in problem.ops]
+        self.__ops = ops
 
         # group operation steps with job and machine and initialize job chain
         self.__job_ops = None
@@ -58,7 +57,6 @@ class JSSolution(Clone):
         '''
         return max(map(lambda op: op.end_time, self.ops))
 
-
     def job_head(self, op:OperationStep) -> OperationStep:
         '''The virtual job step that current operation belonging to.
         Note the difference to `op.top_job_op`.
@@ -69,7 +67,6 @@ class JSSolution(Clone):
         '''The virtual machine step that current operation will be dispatched to.
         Note the difference to `op.top_machine_op`.'''
         return self.find(op.source.machine)
-
 
     def find(self, source_op:Operation):
         '''Find the associated step with source operation.'''
@@ -111,8 +108,8 @@ class JSSolution(Clone):
     def copy(self):
         '''Hard copy of current solution. Override `Clone.copy()`.'''
         # copy step instances and job chain
-        ops = [op.source for op in self.ops]
-        solution = JSSolution(problem=JSProblem(ops=ops))
+        ops = [OperationStep(op.source) for op in self.ops]
+        solution = JSSolution(ops)
 
         # copy machine chain
         step_map = {op.source:op for op in solution.ops + solution.machine_ops}

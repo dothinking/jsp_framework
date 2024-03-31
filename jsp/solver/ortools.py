@@ -32,24 +32,25 @@ class VarArraySolutionPrinter(cp_model.CpSolverSolutionCallback):
 class GoogleORCPSolver(JSSolver):
     '''Google OR-Tools solver.'''
 
-    def __init__(self, name:str='or-tools', max_time:int=None) -> None:
+    def __init__(self, name:str='or-tools', problem:JSProblem=None, max_time:int=None) -> None:
         '''Solve JSP with Google OR-Tools.
 
         Args:
             name (str, optional): Solver name.
+            problem (JSProblem): Problem to solve.
             max_time (int, optional): Max solving time in seconds. Defaults to None, i.e. no limit.
         '''
-        super().__init__(name)
+        super().__init__(name=name, problem=problem)
         self.__max_time = max_time
 
 
-    def do_solve(self, problem:JSProblem):
+    def do_solve(self):
         '''Solve JSP with Google OR-Tools.
 
         https://developers.google.cn/optimization/scheduling/job_shop
         '''
         # Initialize an empty solution from problem
-        solution = JSSolution(problem, direct_mode=True)
+        solution = self.init_solution(direct_mode=True)
 
         # create model
         model, variables = self.__create_model(solution)

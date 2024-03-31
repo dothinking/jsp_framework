@@ -28,20 +28,22 @@ class BenchMark:
         '''
         self.__num_threads = num_threads
 
-        # all cases to solve: (problem, solver)
+        # all cases to solve: (index, solver)
         self.__solving_queue = Queue(maxsize=len(problems)*len(solvers))
         i = 0 # indicating the order
         for problem in problems:
             for solver in solvers:
-                self.__solving_queue.put((i, problem, solver.copy()))
+                s = solver.copy()
+                s.problem = problem
+                self.__solving_queue.put((i, s))
                 i += 1
-        # solved cases: [(id, problem, solver), ...]
+        # solved cases: [(id, solver), ...]
         self.__solved_cases = []
 
 
     @property
-    def result(self) -> List[Tuple[int,JSProblem,JSSolver]]:
-        '''solved cases: [(id, problem, solver), ...].'''
+    def result(self) -> List[Tuple[int,JSSolver]]:
+        '''solved cases: [(id, solver), ...].'''
         return self.__solved_cases
 
 
@@ -81,8 +83,9 @@ class BenchMark:
         ]
         '''
         res = []
-        for (i, p, s) in self.result:
+        for (i, s) in self.result:
             # benchmarking
+            p = s.problem
             optimum = p.optimum
             ref = (optimum[0]+optimum[1])/2 if isinstance(optimum, tuple) else optimum
 
@@ -116,18 +119,19 @@ class BenchMark:
     def __solve_one_case(self, show_info, callback):
         '''Solve one case in child thread.'''
         while True:
-            i, problem, solver = self.__solving_queue.get()
+            i, solver = self.__solving_queue.get()
+            p = solver.problem
 
             # start solving
             if show_info:
-                logging.info('Start solving "%s" with "%s"...', problem.name, solver.name)
-            solver.solve(problem=problem, interval=None, callback=callback) # don't show gantt chart
+                logging.info('Start solving "%s" with "%s"...', p.name, solver.name)
+            solver.solve(interval=None, callback=callback) # don't show gantt chart
             solver.wait() # wait for termination
 
             # collect results
-            self.__solved_cases.append((i, problem, solver))
+            self.__solved_cases.append((i, solver))
             self.__solving_queue.task_done()
             if show_info:
                 res = "Successfully" if solver.status else "Failed"
                 logging.info('%s to solve "%s" with "%s" in %f sec.',
-                             res, problem.name, solver.name, solver.user_time)
+                             res, p.name, solver.name, solver.user_time)

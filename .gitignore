@@ -1,6 +1,7 @@
 *.pyc
 *.lp
 *.sol
+*.mps
 
 test/
 sample/
