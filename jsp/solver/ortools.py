@@ -3,7 +3,6 @@ from collections import (namedtuple, defaultdict)
 from ortools.sat.python import cp_model
 from ..common.exception import JSPException
 from ..model.solver import JSSolver
-from ..model.problem import JSProblem
 from ..model.solution import JSSolution
 
 
@@ -32,32 +31,22 @@ class VarArraySolutionPrinter(cp_model.CpSolverSolutionCallback):
 class GoogleORCPSolver(JSSolver):
     '''Google OR-Tools solver.'''
 
-    def __init__(self, name:str='or-tools', max_time:int=None) -> None:
-        '''Solve JSP with Google OR-Tools.
 
-        Args:
-            name (str, optional): Solver name.
-            max_time (int, optional): Max solving time in seconds. Defaults to None, i.e. no limit.
-        '''
-        super().__init__(name)
-        self.__max_time = max_time
-
-
-    def do_solve(self, problem:JSProblem):
+    def do_solve(self):
         '''Solve JSP with Google OR-Tools.
 
         https://developers.google.cn/optimization/scheduling/job_shop
         '''
         # Initialize an empty solution from problem
-        solution = JSSolution(problem, direct_mode=True)
+        solution = self.init_solution(direct_mode=True)
 
         # create model
         model, variables = self.__create_model(solution)
 
         # set solver
         solver = cp_model.CpSolver()
-        if self.__max_time is not None:
-            solver.parameters.max_time_in_seconds = self.__max_time # set time limit
+        if self.max_time is not None:
+            solver.parameters.max_time_in_seconds = self.max_time # set time limit
 
         solution_printer = VarArraySolutionPrinter(variables, self, solution)
         status = solver.SolveWithSolutionCallback(model, solution_printer)

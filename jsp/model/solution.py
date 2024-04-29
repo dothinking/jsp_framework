@@ -2,28 +2,27 @@
 The variable is start time of each operation, which can be solved directly, or solve
 machine chain operations sequence first and deduce start time accordingly.
 '''
-from typing import (List, Union)
+from typing import List
 from collections import defaultdict
 from .domain import (Clone, Job, Machine, Operation)
 from .variable import OperationStep
 from ..common.graph import DirectedGraph
 from ..common.plot import (plot_gantt_chart_axes, plot_gantt_chart_bars, plot_disjunctive_graph)
-from .problem import JSProblem
 
 
 class JSSolution(Clone):
     '''Solution of job-shop problem.'''
 
-    def __init__(self, problem:JSProblem, direct_mode:bool=True) -> None:
+    def __init__(self, ops:List[OperationStep], direct_mode:bool=True) -> None:
         '''Initialize solution by copying all operations from `problem`.
 
         Args:
-            problem (JSProblem): Problem to solve.
+            ops (List[OperationStep): operation steps.
             direct_mode (bool): solve operation start time directly if True, otherwise,
                 solve machine chain first and deduce start time accordingly.
         '''
         self.__direct_mode = direct_mode
-        self.__ops = [OperationStep(op) for op in problem.ops]
+        self.__ops = ops
 
         # group operation steps with job and machine and initialize job chain
         self.__job_ops = None
@@ -58,7 +57,6 @@ class JSSolution(Clone):
         '''
         return max(map(lambda op: op.end_time, self.ops))
 
-
     def job_head(self, op:OperationStep) -> OperationStep:
         '''The virtual job step that current operation belonging to.
         Note the difference to `op.top_job_op`.
@@ -69,7 +67,6 @@ class JSSolution(Clone):
         '''The virtual machine step that current operation will be dispatched to.
         Note the difference to `op.top_machine_op`.'''
         return self.find(op.source.machine)
-
 
     def find(self, source_op:Operation):
         '''Find the associated step with source operation.'''
@@ -82,18 +79,34 @@ class JSSolution(Clone):
         return _find(self.ops, source_op)
 
 
-    def dispatch(self, op:Union[OperationStep, List[OperationStep]], update_time:bool=True):
-        '''Dispatch the operation step/steps to the associated machine.'''
-        def _dispatch(op:OperationStep):
-            top = self.find(op.source.machine)
-            top.tail_machine_op.connect_machine_op(op)
+    def dispatch(self,
+                 op:OperationStep=None,
+                 ops:List[OperationStep]=None,
+                 update_time:bool=True):
+        '''Dispatch operation step/steps to the associated machine.
+
+        Args:
+            op (OperationStep, optional): assign single step the associated machine chain.
+            ops (List[OperationStep], optional): dispatch operations in specified sequence.
+            update_time (bool, optional): update start time if True. Defaults to True.
+        '''
+        start = None
+        if op:
+            start = op
+            self._dispatch_step(op)
 
         # dispatch operation in specified sequence
-        ops = [op] if isinstance(op, OperationStep) else op
-        for s in ops: _dispatch(s)
+        elif ops:
+            start = ops[0]
+            for s in ops: self._dispatch_step(s)
 
         # update start time
-        if update_time: self.update_start_time(op=ops[0])
+        if update_time and start: self.update_start_time(op=start)
+
+
+    def _dispatch_step(self, op:OperationStep):
+        top = self.find(op.source.machine)
+        top.tail_machine_op.connect_machine_op(op)
 
 
     @property
@@ -111,8 +124,8 @@ class JSSolution(Clone):
     def copy(self):
         '''Hard copy of current solution. Override `Clone.copy()`.'''
         # copy step instances and job chain
-        ops = [op.source for op in self.ops]
-        solution = JSSolution(problem=JSProblem(ops=ops))
+        ops = [OperationStep(op.source) for op in self.ops]
+        solution = JSSolution(ops)
 
         # copy machine chain
         step_map = {op.source:op for op in solution.ops + solution.machine_ops}

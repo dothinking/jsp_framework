@@ -1,5 +1,7 @@
 '''Solvers.'''
 
 from .ortools import GoogleORCPSolver
-from .dispatching_rule import PriorityDispatchSolver
+from .dp import PriorityDispatchSolver
 from .pulp import PuLPSolver
+from .ga import GAGeatpySolver
+from .hybrid import GADPGeatpySolver

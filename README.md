@@ -8,7 +8,8 @@ A framework to explore algorithms for Job-Shop Schedule Problem (JSSP).
     - [x] Mathematical solvers (CBC, SCIP, Gurobi) based on COIN-OR [PuLP](https://github.com/coin-or/pulp)
     - [x] Priority dispatching
     - [ ] Tabu search
-    - [ ] Genetic algorithm 
+    - [ ] Genetic algorithm
+    - [ ] Genetic programming
     - [ ] Reinforcement learning
 
 - Implement and test your solver efficiently.
