@@ -51,27 +51,26 @@ from ..model.solution import JSSolution
 class PriorityDispatchSolver(JSSolver):
     '''General Priority Dispatching Solver.'''
 
-    def __init__(self, name:str=None, problem:JSProblem=None, rule:str=None, fun_rule=None) -> None:
+    def __init__(self, name:str=None, problem:JSProblem=None, rule:str=None) -> None:
         '''Dispatching operation with priority defined by pre-defined or user rule.
 
         Args:
             name (str, optional): Solver name.
             problem (JSProblem): Problem to solve.
-            rule (str, optional): Pre-defined rule name. Defaults to None.
-            fun_rule (function, optional): User defined function for dispatching rule. It takes
-                an OperationStep instance and associated JSSolution instance as inputs, and returns
-                a tuple representing the priority. The lower value, the higher priority.
+            rule (str, optional): Pre-defined rule name, or user defined function for
+                dispatching rule. It takes an OperationStep instance and associated
+                JSSolution instance as inputs, and returns a tuple representing the priority.
+                The lower value, the higher priority.
 
             ```python
             def fun_rule(op:OperationStep, solution:JSSolution) -> tuple
             ```
         '''
         super().__init__(name=name, problem=problem)
-
-        if rule:
+        if callable(rule):
+            self.__dispatching_rule = rule
+        else:
             self.__dispatching_rule = DisPatchingRules.get(rule.upper())
-        elif fun_rule:
-            self.__dispatching_rule = fun_rule
 
 
     def do_solve(self):
@@ -90,7 +89,7 @@ class PriorityDispatchSolver(JSSolver):
         while head_ops:
             # dispatch operation with the first priority
             op = min(head_ops, key=lambda op: self.__dispatching_rule(op, solution))
-            solution.dispatch(op)
+            solution.dispatch(op=op)
 
             # update imminent operations
             pos = head_ops.index(op)
@@ -143,11 +142,14 @@ class DisPatchingRules:
         return op.pre_job_op.end_time
 
     @staticmethod
+    def MT(op:OperationStep, solution:JSSolution):
+        '''Machine ready Time.'''
+        return solution.machine_head(op).tail_machine_op.end_time
+
+    @staticmethod
     def WT(op:OperationStep, solution:JSSolution):
         '''Waiting Time.'''
-        arrive_time = op.pre_job_op.end_time
-        machine_time = solution.machine_head(op).tail_machine_op.end_time
-        return max(machine_time-arrive_time, 0)
+        return DisPatchingRules.MT(op, solution) - DisPatchingRules.CT(op, solution)
 
     @staticmethod
     def TWR(op:OperationStep, solution:JSSolution):
@@ -229,7 +231,7 @@ class DisPatchingRules:
     @staticmethod
     def EST(op:OperationStep, solution:JSSolution):
         '''Earliest Start Time.'''
-        return max(op.pre_job_op.end_time, solution.machine_head(op).tail_machine_op.end_time)
+        return max(DisPatchingRules.CT(op, solution), DisPatchingRules.MT(op, solution))
 
     @staticmethod
     def LST(op:OperationStep, solution:JSSolution):
@@ -239,11 +241,13 @@ class DisPatchingRules:
     @staticmethod
     def HH(op:OperationStep, solution:JSSolution):
         '''黄志, 黄文奇. 作业车间调度问题的一种启发式算法.'''
-        remaining = DisPatchingRules.TWR(op, solution) - 1.5*op.source.duration
+        remaining = DisPatchingRules.TWR(op, solution) - 1.5*DisPatchingRules.PT(op, solution)
         return DisPatchingRules.EST(op, solution), -remaining
 
     @staticmethod
     def IHH(op:OperationStep, solution:JSSolution):
         '''Improved HH rule.'''
-        return DisPatchingRules.EST(op, solution), \
-            -DisPatchingRules.TWR(op, solution)/op.source.duration
+        remaining = DisPatchingRules.TWR(op, solution) - 1.5*DisPatchingRules.PT(op, solution)
+        return DisPatchingRules.EST(op, solution) + \
+            DisPatchingRules.PT(op, solution) * 0.48 - \
+            DisPatchingRules.WT(op, solution) * 0.02, -remaining

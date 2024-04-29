@@ -15,15 +15,17 @@ from ..common.plot import (plot_gantt_chart_axes, plot_gantt_chart_bars)
 class JSSolver(Clone, ABC):
     '''Solver.'''
 
-    def __init__(self, name:str=None, problem:JSProblem=None) -> None:
+    def __init__(self, name:str=None, problem:JSProblem=None, max_time:int=None) -> None:
         '''Base solver for Job-Shop Schedule Problem.
 
         Args:
             name (str, optional): Solver name. Default to None, i.e. class name.
             problem (JSProblem): Problem to solve.
+            max_time (int, optional): Max solving time in seconds. Defaults to None, i.e., no limit.
         '''
-        self.__problem = problem
         self.name = name or self.__class__.__name__
+        self.__problem = problem
+        self.__max_time = max_time
 
         # solving parameters
         self.__running = False
@@ -64,6 +66,11 @@ class JSSolver(Clone, ABC):
     def status(self):
         '''Final status: True-success, False-failed or infeasible.'''
         return self.__status
+
+    @property
+    def max_time(self):
+        '''Maximum time for solving process.'''
+        return self.__max_time
 
     @property
     def user_time(self):

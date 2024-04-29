@@ -33,10 +33,9 @@ class PuLPSolver(JSSolver):
             max_time (int, optional): Max solving time in seconds. Defaults to None, i.e. no limit.
             msg (bool, optional): show solver log or not. Default to False.
         '''
-        super().__init__(name=name, problem=problem)
+        super().__init__(name=name, problem=problem, max_time=max_time)
         self.__solver_name = solver_name
         self.__msg = msg
-        self.__max_time = max_time
 
 
     def do_solve(self):
@@ -51,7 +50,7 @@ class PuLPSolver(JSSolver):
 
         # solver
         solver_cmd = self.SOLVER_DICT.get(self.__solver_name.upper(), pulp.PULP_CBC_CMD)
-        solver = solver_cmd(msg=self.__msg, timeLimit=self.__max_time, keepFiles=True)
+        solver = solver_cmd(msg=self.__msg, timeLimit=self.max_time, keepFiles=True)
         model.solve(solver)
         if model.status!=pulp.LpStatusOptimal:
             raise JSPException('No feasible solution found.')

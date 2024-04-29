@@ -2,7 +2,7 @@
 The variable is start time of each operation, which can be solved directly, or solve
 machine chain operations sequence first and deduce start time accordingly.
 '''
-from typing import (List, Union)
+from typing import List
 from collections import defaultdict
 from .domain import (Clone, Job, Machine, Operation)
 from .variable import OperationStep
@@ -79,18 +79,34 @@ class JSSolution(Clone):
         return _find(self.ops, source_op)
 
 
-    def dispatch(self, op:Union[OperationStep, List[OperationStep]], update_time:bool=True):
-        '''Dispatch the operation step/steps to the associated machine.'''
-        def _dispatch(op:OperationStep):
-            top = self.find(op.source.machine)
-            top.tail_machine_op.connect_machine_op(op)
+    def dispatch(self,
+                 op:OperationStep=None,
+                 ops:List[OperationStep]=None,
+                 update_time:bool=True):
+        '''Dispatch operation step/steps to the associated machine.
+
+        Args:
+            op (OperationStep, optional): assign single step the associated machine chain.
+            ops (List[OperationStep], optional): dispatch operations in specified sequence.
+            update_time (bool, optional): update start time if True. Defaults to True.
+        '''
+        start = None
+        if op:
+            start = op
+            self._dispatch_step(op)
 
         # dispatch operation in specified sequence
-        ops = [op] if isinstance(op, OperationStep) else op
-        for s in ops: _dispatch(s)
+        elif ops:
+            start = ops[0]
+            for s in ops: self._dispatch_step(s)
 
         # update start time
-        if update_time: self.update_start_time(op=ops[0])
+        if update_time and start: self.update_start_time(op=start)
+
+
+    def _dispatch_step(self, op:OperationStep):
+        top = self.find(op.source.machine)
+        top.tail_machine_op.connect_machine_op(op)
 
 
     @property
